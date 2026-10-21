@@ -6,8 +6,8 @@ import io
 import json
 import os
 
-SRC = "C:/Users/Mel-g/CoachProbe/forever_talents"
-OUT = "C:/Users/Mel-g/StatCoach/StatCoachData_Forever.lua"
+SRC = "C:/Users/Adamr/CoachProbe/forever_talents"
+OUT = "C:/Users/Adamr/StatCoach/StatCoachData_Forever.lua"
 
 # Era's tabSpec order per class, and how the harvest names those trees
 TREES = {
