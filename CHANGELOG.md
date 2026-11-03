@@ -1,5 +1,17 @@
-# StatCoach - Changelog
+# StatCap - Changelog
 
+
+---
+
+# StatCap 1.2.0
+
+*3 November 2026*
+
+## StatCoach is now StatCap
+
+Same addon, new name. If the old StatCoach folder is still installed the first time you
+log in, StatCap takes over its settings and switches the old copy off from your next
+reload, so its folder can be deleted. /statcap opens the window, and /stc still does.
 
 ---
 

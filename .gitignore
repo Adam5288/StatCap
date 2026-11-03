@@ -5,7 +5,7 @@
 
 # SavedVariables dumps, if one is ever copied here while debugging
 *.lua.bak
-StatCoachDB.lua
+StatCapDB.lua
 
 # OS / editor
 desktop.ini

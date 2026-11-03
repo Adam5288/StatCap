@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Pull ONE version's notes out of CHANGELOG.md into RELEASE_NOTES.md.
 
-The packager ships whatever RELEASE_NOTES.md contains. StatCoach releases its
+The packager ships whatever RELEASE_NOTES.md contains. StatCap releases its
 flavors on their own schedules - 1.1.17, 1.1.18 and 1.1.19 were TBC only, 1.1.11
 and 1.1.13 were retail only - so the notes for a release are the section for that
 version AND that flavor, never both.
@@ -26,17 +26,26 @@ FLAVOR_LABEL = {"tbc": "TBC", "bcc": "TBC", "retail": "Retail", "mainline": "Ret
                 "forever": "Forever", "mists": "Mists", "era": "Classic Era"}
 
 
+# The addon was called StatCoach until 1.2.0, and the history keeps the headings
+# it shipped under. A section may also be written once for every flavor, with no
+# flavor in its heading (StatCap 1.2.0, the rename, went to all five clients).
+NAME = r"Stat(?:Cap|Coach)"
+
+
 def section(version, label):
-    """The text under '# StatCoach <version> (<label>)', up to the next heading."""
+    """The text under '# StatCap <version> (<label>)' - or, when that flavor has no
+    section of its own, under '# StatCap <version>' - up to the next heading."""
     text = io.open(CHANGELOG, encoding="utf-8").read()
-    heading = re.compile(
-        r"^# StatCoach %s \(%s\)\s*$" % (re.escape(version), re.escape(label)), re.M
-    )
-    m = heading.search(text)
+    m = None
+    for tail in (r" \(%s\)" % re.escape(label), ""):
+        heading = re.compile(r"^# %s %s%s\s*$" % (NAME, re.escape(version), tail), re.M)
+        m = heading.search(text)
+        if m:
+            break
     if not m:
         return None
     rest = text[m.end():]
-    nxt = re.search(r"^# StatCoach ", rest, re.M)
+    nxt = re.search(r"^# %s " % NAME, rest, re.M)
     body = rest[: nxt.start()] if nxt else rest
     # The separator between entries belongs to the file, not to the entry.
     return body.strip().rstrip("-").strip()
@@ -54,19 +63,19 @@ def main():
     body = section(version, label)
     if not body:
         sys.exit(
-            "CHANGELOG.md has no '# StatCoach %s (%s)' section.\n"
+            "CHANGELOG.md has no '# StatCap %s (%s)' or '# StatCap %s' section.\n"
             "Write the notes for this release before publishing - Wago rejects an\n"
             "empty changelog, and it does so after CurseForge has taken the file."
-            % (version, label)
+            % (version, label, version)
         )
 
     # Every release ends with the support line. It lives here, not in
     # CHANGELOG.md, so it cannot be forgotten, cannot be worded two ways, and
     # does not repeat down the file when someone reads the whole history.
-    footer = ("StatCoach is free and stays free. If you would like to support "
+    footer = ("StatCap is free and stays free. If you would like to support "
               "the work: https://ko-fi.com/adam5288")
     io.open(OUT, "w", encoding="utf-8", newline="\n").write(
-        "# StatCoach %s (%s)\n\n%s\n\n---\n\n%s\n" % (version, label, body, footer)
+        "# StatCap %s (%s)\n\n%s\n\n---\n\n%s\n" % (version, label, body, footer)
     )
     print("RELEASE_NOTES.md written for %s (%s), %d characters."
           % (version, label, len(body)))

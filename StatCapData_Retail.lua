@@ -1,5 +1,5 @@
---[[ StatCoachData_Retail.lua
-     RETAIL (Mainline) data. Loaded only by StatCoach_Mainline.toc; only USED when
+--[[ StatCapData_Retail.lua
+     RETAIL (Mainline) data. Loaded only by StatCap_Mainline.toc; only USED when
      the engine detects retail (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE). Pure tables,
      no API calls -> safe everywhere.
 

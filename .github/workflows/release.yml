@@ -9,7 +9,7 @@
 # A dry run uploads the packaged zip as a workflow artifact, so it can be
 # downloaded and installed locally before anyone else ever sees it.
 #
-# ONE FLAVOR PER RUN. StatCoach's clients ship on their own schedules -
+# ONE FLAVOR PER RUN. StatCap's clients ship on their own schedules -
 # 1.1.17, 1.1.18 and 1.1.19 were TBC only; 1.1.11 and 1.1.13 were retail only -
 # so a run that pushed both at once would put a version on a store that has no
 # notes for it. Run it twice when a version really does go to both.
@@ -62,14 +62,14 @@ jobs:
 
       # One source tree serves both clients, and each client must receive only
       # its own files - exactly as the hand-built zips have always been. A retail
-      # package carrying StatCoach.toc would be loaded by a Classic client that
+      # package carrying StatCap.toc would be loaded by a Classic client that
       # was never meant to see this build.
       - name: Reduce the tree to the ${{ inputs.flavor }} files
         run: |
           if [ "${{ inputs.flavor }}" = "tbc" ]; then
-            rm -f StatCoach_Mainline.toc StatCoach_Forever.toc StatCoach_Mists.toc StatCoach_Vanilla.toc StatCoachData_Retail.lua StatCoachData_Mists.lua StatCoachData_Era.lua StatCoachData_Forever.lua
+            rm -f StatCap_Mainline.toc StatCap_Forever.toc StatCap_Mists.toc StatCap_Vanilla.toc StatCapData_Retail.lua StatCapData_Mists.lua StatCapData_Era.lua StatCapData_Forever.lua
             echo "GAME=bcc" >> "$GITHUB_ENV"; echo "LABEL=TBC" >> "$GITHUB_ENV"
-            echo "TBC package: StatCoach.toc + StatCoachData.lua"
+            echo "TBC package: StatCap.toc + StatCapData.lua"
           elif [ "${{ inputs.flavor }}" = "forever" ]; then
             # World of Warcraft: Forever is a Mainline-family client: it loads a
             # _Mainline TOC or a plain one, and (measured on the beta, 18 Sep 2026)
@@ -77,27 +77,27 @@ jobs:
             # renamed before launch. So the Forever package carries ONE plain TOC,
             # which needs no suffix to stay valid - and the packager refuses a
             # _Mainline TOC that lists a Forever interface number.
-            rm -f StatCoach.toc StatCoach_Mainline.toc StatCoach_Mists.toc StatCoach_Vanilla.toc StatCoachData_Mists.lua
-            mv StatCoach_Forever.toc StatCoach.toc
+            rm -f StatCap.toc StatCap_Mainline.toc StatCap_Mists.toc StatCap_Vanilla.toc StatCapData_Mists.lua
+            mv StatCap_Forever.toc StatCap.toc
             echo "GAME=forever" >> "$GITHUB_ENV"; echo "LABEL=Forever" >> "$GITHUB_ENV"
-            echo "Forever package: StatCoach.toc (interface 16001) + TBC, retail, Era and Forever data files"
+            echo "Forever package: StatCap.toc (interface 16001) + TBC, retail, Era and Forever data files"
           elif [ "${{ inputs.flavor }}" = "mists" ]; then
             # Mists of Pandaria Classic loads a _Mists TOC; it carries the TBC data
             # file (plain tables the engine expects to exist) and its own roster.
-            rm -f StatCoach.toc StatCoach_Mainline.toc StatCoach_Forever.toc StatCoach_Vanilla.toc StatCoachData_Retail.lua StatCoachData_Era.lua StatCoachData_Forever.lua
+            rm -f StatCap.toc StatCap_Mainline.toc StatCap_Forever.toc StatCap_Vanilla.toc StatCapData_Retail.lua StatCapData_Era.lua StatCapData_Forever.lua
             echo "GAME=mists" >> "$GITHUB_ENV"; echo "LABEL=Mists" >> "$GITHUB_ENV"
-            echo "Mists package: StatCoach_Mists.toc + StatCoachData.lua + StatCoachData_Mists.lua"
+            echo "Mists package: StatCap_Mists.toc + StatCapData.lua + StatCapData_Mists.lua"
           elif [ "${{ inputs.flavor }}" = "era" ]; then
             # Classic Era loads a _Vanilla TOC (read off the client with CoachProbe,
             # 24 Sep 2026). Like Mists it carries the TBC data file (plain tables the
             # engine expects to exist) and its own roster.
-            rm -f StatCoach.toc StatCoach_Mainline.toc StatCoach_Forever.toc StatCoach_Mists.toc StatCoachData_Retail.lua StatCoachData_Mists.lua StatCoachData_Forever.lua
+            rm -f StatCap.toc StatCap_Mainline.toc StatCap_Forever.toc StatCap_Mists.toc StatCapData_Retail.lua StatCapData_Mists.lua StatCapData_Forever.lua
             echo "GAME=classic" >> "$GITHUB_ENV"; echo "LABEL=Era" >> "$GITHUB_ENV"
-            echo "Era package: StatCoach_Vanilla.toc + StatCoachData.lua + StatCoachData_Era.lua"
+            echo "Era package: StatCap_Vanilla.toc + StatCapData.lua + StatCapData_Era.lua"
           else
-            rm -f StatCoach.toc StatCoach_Forever.toc StatCoach_Mists.toc StatCoach_Vanilla.toc StatCoachData_Mists.lua StatCoachData_Era.lua StatCoachData_Forever.lua
+            rm -f StatCap.toc StatCap_Forever.toc StatCap_Mists.toc StatCap_Vanilla.toc StatCapData_Mists.lua StatCapData_Era.lua StatCapData_Forever.lua
             echo "GAME=retail" >> "$GITHUB_ENV"; echo "LABEL=Retail" >> "$GITHUB_ENV"
-            echo "Retail package: StatCoach_Mainline.toc + both data files"
+            echo "Retail package: StatCap_Mainline.toc + both data files"
           fi
           ls -1 *.toc *.lua
 
@@ -105,7 +105,7 @@ jobs:
       # the TOC. Catch that here rather than in a player's out-of-date warning.
       - name: Version in the TOC must match the tag
         run: |
-          TOC=$(ls -1 StatCoach*.toc | head -1)
+          TOC=$(ls -1 StatCap*.toc | head -1)
           TOC_VERSION=$(grep -m1 '^## Version:' "$TOC" | sed 's/^## Version:[[:space:]]*//' | tr -d '\r')
           TAG_VERSION="${{ inputs.tag }}"; TAG_VERSION="${TAG_VERSION#v}"
           echo "$TOC says $TOC_VERSION, tag says $TAG_VERSION"
@@ -167,7 +167,7 @@ jobs:
           args: >-
             -d
             -g ${{ env.GAME }}
-            -n "StatCoach-${{ env.LABEL }}-${{ env.VERSION }}:${{ env.VERSION }}-${{ env.LABEL }}"
+            -n "StatCap-${{ env.LABEL }}-${{ env.VERSION }}:${{ env.VERSION }}-${{ env.LABEL }}"
 
       - name: Package and publish
         if: ${{ inputs.publish == true && inputs.wago_only != true }}
@@ -181,7 +181,7 @@ jobs:
             -p ${{ env.CF_PROJECT_ID }}
             -a ${{ env.WAGO_PROJECT_ID }}
             -g ${{ env.GAME }}
-            -n "StatCoach-${{ env.LABEL }}-${{ env.VERSION }}:${{ env.VERSION }}-${{ env.LABEL }}"
+            -n "StatCap-${{ env.LABEL }}-${{ env.VERSION }}:${{ env.VERSION }}-${{ env.LABEL }}"
 
       # The stores are uploaded one after another, so a version can be live on one
       # and rejected by the next. Re-running the step above would offer CurseForge
@@ -197,13 +197,13 @@ jobs:
           args: >-
             -a ${{ env.WAGO_PROJECT_ID }}
             -g ${{ env.GAME }}
-            -n "StatCoach-${{ env.LABEL }}-${{ env.VERSION }}:${{ env.VERSION }}-${{ env.LABEL }}"
+            -n "StatCap-${{ env.LABEL }}-${{ env.VERSION }}:${{ env.VERSION }}-${{ env.LABEL }}"
 
       - name: Keep the zip so a dry run can be installed and checked
         if: ${{ inputs.publish != true }}
         uses: actions/upload-artifact@v4
         with:
-          name: StatCoach-${{ inputs.flavor }}-${{ inputs.tag }}
+          name: StatCap-${{ inputs.flavor }}-${{ inputs.tag }}
           path: .release/*.zip
           # .release is a hidden directory, and upload-artifact v4 skips hidden
           # paths unless told otherwise - without this the dry run warns and

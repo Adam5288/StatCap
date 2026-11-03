@@ -1,9 +1,9 @@
---[[ StatCoachData_Era.lua
-     CLASSIC ERA data (1.15.x, level 60). Loaded only by StatCoach_Vanilla.toc.
+--[[ StatCapData_Era.lua
+     CLASSIC ERA data (1.15.x, level 60). Loaded only by StatCap_Vanilla.toc.
      Pure tables, no API calls.
 
      The caps are NOT in here: the engine works them out from your weapon skill with
-     the game's own attack table (see the ERA path in StatCoach.lua). This file carries,
+     the game's own attack table (see the ERA path in StatCap.lua). This file carries,
      per talent tree, the stat order on Wowhead's WoW Classic stat page for it (read
      2026-09-24; every page says patch 1.15.8, updated 2025/03/20, Feral DPS 2023/11/21),
      what the spec attacks with (which caps apply) and the guide's point in a sentence.
@@ -65,7 +65,7 @@ E.classes = {
       Protection = {
         role = "TANK", primary = "Strength", attack = "melee",
         stats = {},
-        notes = "No Classic guide publishes a stat order for Protection paladins, so StatCoach shows your caps and leaves the list empty rather than guess.",
+        notes = "No Classic guide publishes a stat order for Protection paladins, so StatCap shows your caps and leaves the list empty rather than guess.",
       },
       Retribution = {
         role = "DAMAGER", primary = "Strength", attack = "melee",

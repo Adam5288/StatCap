@@ -1,4 +1,4 @@
-﻿--[[ StatCoachData.lua
+﻿--[[ StatCapData.lua
      Data table: rating constants, caps, and stat priority per class x spec x context.
      Everything here is "combat mechanics" (level 70, TBC), not item data -> Anniversary-safe.
      Talent-based hit is read LIVE by the engine, so the cap bars below carry the caps; priority lists say just the stat.

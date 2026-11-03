@@ -1,10 +1,11 @@
 ﻿## Interface: 16001
-## Title: StatCoach
+## Title: StatCap
 ## Notes: Your talent tree's stat order, upgrade lines on items, weapon skill and Defense for World of Warcraft: Forever
 ## Author: Adam
-## Version: 1.1.31
-## SavedVariables: StatCoachDB
-## IconTexture: Interface\AddOns\StatCoach\Media\logo
+## Version: 1.2.0
+## SavedVariables: StatCapDB
+## OptionalDeps: StatCoach
+## IconTexture: Interface\AddOns\StatCap\Media\logo
 ## X-Category: Combat
 
 # Minimap button via LibDBIcon (LibStub -> CallbackHandler -> LDB -> DBIcon order matters)
@@ -13,8 +14,8 @@ Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
 Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
 Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
 
-StatCoachData.lua
-StatCoachData_Retail.lua
-StatCoachData_Era.lua
-StatCoachData_Forever.lua
-StatCoach.lua
+StatCapData.lua
+StatCapData_Retail.lua
+StatCapData_Era.lua
+StatCapData_Forever.lua
+StatCap.lua

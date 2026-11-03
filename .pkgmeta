@@ -1,4 +1,4 @@
-package-as: StatCoach
+package-as: StatCap
 
 # No stripped "nolib" variant: the four libraries under Libs/ are embedded on
 # purpose, and a nolib build would ship an addon with no minimap button.

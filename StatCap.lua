@@ -1,7 +1,7 @@
---[[ StatCoach.lua
+--[[ StatCap.lua
      Engine + UI. Reads level/class/spec + combat ratings + talent hit LIVE and
      shows stat priority (with your current values) + cap coach in a movable window.
-     Slash: /statcoach or /stc   (reset = reset position)
+     Slash: /statcap or /stc   (reset = reset position; /statcoach still answers)
 ]]--
 
 local ADDON, ns = ...
@@ -277,7 +277,7 @@ end
 -- Resolve: what we show right now (auto or manual override)
 ------------------------------------------------------------------------
 local function Resolve()
-  local db = StatCoachDB
+  local db = StatCapDB
   local detClass = DetectClass()
   local detSpec  = DetectSpec(detClass)
 
@@ -519,7 +519,7 @@ local KEYMAP = {
   ITEM_MOD_SPELL_POWER_SHORT = "spellPower", ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = "spellPower",
   ITEM_MOD_SPELL_HEALING_DONE_SHORT = "healing",
   -- mp5 answers to two different keys: TBC uses POWER_REGEN0, later clients the
-  -- MANA_REGENERATION name. Map both - StatCoach ships to both.
+  -- MANA_REGENERATION name. Map both - StatCap ships to both.
   ITEM_MOD_MANA_REGENERATION_SHORT = "mp5", ITEM_MOD_POWER_REGEN0_SHORT = "mp5",
   ITEM_MOD_DEFENSE_SKILL_RATING_SHORT = "defense", ITEM_MOD_DODGE_RATING_SHORT = "dodge",
   ITEM_MOD_PARRY_RATING_SHORT = "parry", ITEM_MOD_BLOCK_VALUE_SHORT = "blockValue",
@@ -669,7 +669,7 @@ local function cannotEquip(link)
   return itemRank > ceiling
 end
 
-local scanTip = CreateFrame("GameTooltip", "StatCoachScanTip", nil, "GameTooltipTemplate")
+local scanTip = CreateFrame("GameTooltip", "StatCapScanTip", nil, "GameTooltipTemplate")
 scanTip:SetOwner(UIParent, "ANCHOR_NONE")
 
 -- Turn one of the game's own format strings into a Lua pattern. The game ships
@@ -701,7 +701,7 @@ local function getWeaponDPS(link)
   scanTip:ClearLines()
   if not pcall(scanTip.SetHyperlink, scanTip, link) then return nil end
   for i = 1, scanTip:NumLines() do
-    local fs = _G["StatCoachScanTipTextLeft" .. i]
+    local fs = _G["StatCapScanTipTextLeft" .. i]
     local text = fs and fs:GetText()
     if text then
       for _, pat in ipairs(DPS_PATTERNS) do
@@ -860,7 +860,7 @@ local function statTableFromTooltip(link, patterns)
   if not pcall(scanTip.SetHyperlink, scanTip, link) then return t end
   local english = (patterns == PARSE)
   for i = 2, scanTip:NumLines() do   -- skip line 1 (the item name)
-    local fs = _G["StatCoachScanTipTextLeft" .. i]
+    local fs = _G["StatCapScanTipTextLeft" .. i]
     local text = fs and fs:GetText()
     if text then
       local low = text:lower()
@@ -996,7 +996,7 @@ end
 -- exists only in the tooltip, and it is localized - so the pattern comes from
 -- the client's own ITEM_CLASSES_ALLOWED global, and the player's class name
 -- from UnitClass, which answers in the same language. Cached per item id.
-local classLockTip = CreateFrame("GameTooltip", "StatCoachClassLockTip", nil, "GameTooltipTemplate")
+local classLockTip = CreateFrame("GameTooltip", "StatCapClassLockTip", nil, "GameTooltipTemplate")
 classLockTip:SetOwner(UIParent, "ANCHOR_NONE")
 local classLockCache = {}
 local function ClassLocked(link)
@@ -1017,7 +1017,7 @@ local function ClassLocked(link)
   if classLockTip:NumLines() < 2 then return false end
   local locked = false
   for i = 2, classLockTip:NumLines() do
-    local fs = _G["StatCoachClassLockTipTextLeft" .. i]
+    local fs = _G["StatCapClassLockTipTextLeft" .. i]
     local txt = fs and fs:GetText()
     local list = txt and txt:match(pat)
     if list then
@@ -1228,7 +1228,7 @@ end
 -- scale is delta over the WHOLE equipped gear score - but its tier thresholds
 -- must be calibrated from real play, not guessed. So: behavior unchanged, and
 -- with /stc calib ON every verdict quietly records BOTH percentages to
--- StatCoachDB.pctlog (capped, deduped) for reading off SavedVariables later.
+-- StatCapDB.pctlog (capped, deduped) for reading off SavedVariables later.
 local function CharTotalScore(role, weights, s)
   if curCtx.charTotal then return curCtx.charTotal end
   local total = 0
@@ -1244,9 +1244,9 @@ end
 
 local calibSeen = {}
 local function CalibLog(link, equipLoc, r, role, weights, s)
-  if not (StatCoachDB and StatCoachDB.calib) or not r then return end
-  local log = StatCoachDB.pctlog
-  if not log then log = {}; StatCoachDB.pctlog = log end
+  if not (StatCapDB and StatCapDB.calib) or not r then return end
+  local log = StatCapDB.pctlog
+  if not log then log = {}; StatCapDB.pctlog = log end
   if #log >= 500 or calibSeen[link] then return end   -- cap: SavedVariables is not a landfill
   calibSeen[link] = true
   local total = CharTotalScore(role, weights, s)
@@ -1288,7 +1288,7 @@ local function evalItem(link)
   end
   -- Strict armor filter (/stc armor): hide off-type armor entirely instead of the
   -- default soft penalty. Requested by users who never want cloth/leather suggested.
-  if StatCoachDB and StatCoachDB.armorStrict and offTypeArmor(link) then return nil end
+  if StatCapDB and StatCapDB.armorStrict and offTypeArmor(link) then return nil end
   local name = GetItemInfo(link) or (link and link:match("%[(.-)%]")) or "item"
   local role = curCtx.role
   local s = ReadStats()
@@ -1376,17 +1376,17 @@ local function shownPct(r)
 end
 
 -- How small an upgrade is still worth mentioning. Presentation only: the score
--- is unchanged, this is just how low StatCoach will open its mouth. Someone in
+-- is unchanged, this is just how low StatCap will open its mouth. Someone in
 -- raid gear wants 10%+ and nothing else; someone levelling wants every scrap.
 -- Same reason as shownPct for living in one place - the badge and the tooltip
 -- must agree on what counts, or an item gets a badge and no verdict.
 local function badgeFloor()
-  return (StatCoachDB and StatCoachDB.minUpgrade) or 1
+  return (StatCapDB and StatCapDB.minUpgrade) or 1
 end
 
 -- Upgrade % for a bag item vs equipped (nil if not an upgrade); cached per link
 local function bagUpgradePct(link)
-  if not link or not StatCoachDB.bagBadge then return nil end
+  if not link or not StatCapDB.bagBadge then return nil end
   if not curCtx.role and not RETAIL then return nil end
   local c = bagCache[link]
   if c == nil then
@@ -1409,7 +1409,7 @@ end
 -- PURPLE SKULL = BIG upgrade (25%+ / empty slot) - it kills your old item.
 local function verdictOf(r)
   -- Icon size is configurable (/stc icon N, default 14); the skull stays 2px bigger.
-  local sz = (StatCoachDB and StatCoachDB.iconSize) or 14
+  local sz = (StatCapDB and StatCapDB.iconSize) or 14
   -- The badge on bags and quest rewards is a "+", so the tooltip says "+" too.
   -- It used to be a gold arrow texture in BOTH upgrade tiers, which meant the
   -- green tier drew a gold icon next to green text - the one place the two
@@ -1551,7 +1551,7 @@ local function ApplyGemHints(tt, link, worthGemming)
   RestoreHintFonts()
   -- Own switch in the minimap menu, on unless turned off (nil = on, so nobody
   -- who never opens the menu misses the feature).
-  if StatCoachDB and StatCoachDB.gemHints == false then return end
+  if StatCapDB and StatCapDB.gemHints == false then return end
   -- Only where there is something to gem FOR. Naming a gem on every socketed
   -- item in the world - vendor junk, auction browsing, gear you will never
   -- wear - is noise, and the hint means "if you take this, fill it with X".
@@ -1560,7 +1560,7 @@ local function ApplyGemHints(tt, link, worthGemming)
   if not picks then return end
   local base = tt.GetName and tt:GetName()
   if not base then return end
-  local sz = (StatCoachDB and StatCoachDB.iconSize) or 14
+  local sz = (StatCapDB and StatCapDB.iconSize) or 14
   for i = 2, tt:NumLines() do
     local left = _G[base .. "TextLeft" .. i]
     local text = left and left:GetText()
@@ -1603,12 +1603,12 @@ local function AddVerdict(tt, link, resize)
   -- but only on items the verdict would call an upgrade.
   local label, _, cr, cg, cb = verdictOf(r)
   ApplyGemHints(tt, link, label ~= nil)
-  if not (StatCoachDB and StatCoachDB.tooltip) then return end
+  if not (StatCapDB and StatCapDB.tooltip) then return end
   if not label then return end
   tt:AddLine(" ")   -- spacer: our block stands on its own at the bottom, Pawn-style
   -- The prefix speaks in the Coach series' mint - the one colour no Blizzard
   -- tooltip line uses, and the same voice TrinketCoach already answers in.
-  tt:AddLine("|cff33ff99StatCoach:|r " .. label, cr, cg, cb)
+  tt:AddLine("|cff33ff99StatCap:|r " .. label, cr, cg, cb)
   -- The post-hooks below run AFTER the tooltip has sized itself, so they must
   -- re-Show to fit the new line. The OnTooltipSetItem path must NOT (no flicker).
   if resize then tt:Show() end
@@ -1926,7 +1926,7 @@ local COLOR_HEX   = { meta = "cccccc", red = "ff6060", yellow = "ffe040", blue =
 
 local function BuildGemPopup()
   if UI.gemPopup then return end
-  local p = CreateFrame("Frame", "StatCoachGemFrame", UIParent, "BackdropTemplate")
+  local p = CreateFrame("Frame", "StatCapGemFrame", UIParent, "BackdropTemplate")
   p:SetSize(304, 239)
   p:SetPoint("TOPLEFT", UI.frame, "TOPRIGHT", 8, 0)
   p:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -2055,7 +2055,7 @@ end
 
 local function BuildEnchantPopup()
   if UI.enchPopup then return end
-  local p = CreateFrame("Frame", "StatCoachEnchantFrame", UIParent, "BackdropTemplate")
+  local p = CreateFrame("Frame", "StatCapEnchantFrame", UIParent, "BackdropTemplate")
   p:SetSize(262, 322)
   p:SetPoint("TOPRIGHT", UI.frame, "TOPLEFT", -8, 0)
   p:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -2102,16 +2102,16 @@ local function BuildEnchantPopup()
       if e.vendor then
         local v = e.vendor
         if TomTom and TomTom.AddWaypoint then
-          local ok = AddScPin(v.map, v.x, v.y, "StatCoach: " .. e.ench)
+          local ok = AddScPin(v.map, v.x, v.y, "StatCap: " .. e.ench)
           if ok then
-            print("|cffffd100StatCoach:|r waypoint set - " .. (v.where or e.ench))
+            print("|cffffd100StatCap:|r waypoint set - " .. (v.where or e.ench))
             return
           end
         end
-        print("|cffffd100StatCoach:|r " .. e.ench .. " - " .. (v.where or "") ..
+        print("|cffffd100StatCap:|r " .. e.ench .. " - " .. (v.where or "") ..
           string.format("  (%.1f, %.1f)", v.x, v.y))
       else
-        print("|cffffd100StatCoach:|r " .. e.ench ..
+        print("|cffffd100StatCap:|r " .. e.ench ..
           " - cast by an enchanter (ask in trade chat) or crafted.")
       end
     end)
@@ -2179,7 +2179,7 @@ end
 ------------------------------------------------------------------------
 local function BuildNotesPopup()
   if UI.notesPopup then return end
-  local p = CreateFrame("Frame", "StatCoachNotesFrame", UIParent, "BackdropTemplate")
+  local p = CreateFrame("Frame", "StatCapNotesFrame", UIParent, "BackdropTemplate")
   p:SetSize(284, 150)
   -- Sits ABOVE the window by default. Anchored by its BOTTOM edge on purpose:
   -- the popup is resized to fit its text, and anchoring the top would make it
@@ -2235,10 +2235,10 @@ local function RefreshNotes(spec)
 end
 
 local function BuildUI()
-  local f = CreateFrame("Frame", "StatCoachFrame", UIParent, "BackdropTemplate")
+  local f = CreateFrame("Frame", "StatCapFrame", UIParent, "BackdropTemplate")
   f:SetSize(268, 400)
-  f:SetPoint(StatCoachDB.point or "CENTER", UIParent, StatCoachDB.point or "CENTER",
-    StatCoachDB.x or 0, StatCoachDB.y or 0)
+  f:SetPoint(StatCapDB.point or "CENTER", UIParent, StatCapDB.point or "CENTER",
+    StatCapDB.x or 0, StatCapDB.y or 0)
   f:SetBackdrop({
     bgFile = "Interface\\Buttons\\WHITE8x8",
     edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1,
@@ -2247,25 +2247,25 @@ local function BuildUI()
   f:SetBackdropBorderColor(0.35, 0.30, 0.10, 1)
   f:SetMovable(true); f:EnableMouse(true); f:RegisterForDrag("LeftButton")
   f:SetClampedToScreen(true)
-  f:SetScale(StatCoachDB.scale or 1)
+  f:SetScale(StatCapDB.scale or 1)
   f:SetScript("OnDragStart", f.StartMoving)
   f:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
     local p, _, _, x, y = self:GetPoint()
-    StatCoachDB.point, StatCoachDB.x, StatCoachDB.y = p, x, y
+    StatCapDB.point, StatCapDB.x, StatCapDB.y = p, x, y
   end)
   -- ESC closes the window (and its popups) like a normal frame
-  tinsert(UISpecialFrames, "StatCoachFrame")
+  tinsert(UISpecialFrames, "StatCapFrame")
   f:SetScript("OnHide", function()
     if UI.gemPopup then UI.gemPopup:Hide() end
     if UI.enchPopup then UI.enchPopup:Hide() end
     if UI.notesPopup then UI.notesPopup:Hide() end
-    StatCoachDB.shown = false
+    StatCapDB.shown = false
   end)
 
   local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   title:SetPoint("TOPLEFT", PAD, -10)
-  title:SetText("|cffffd100StatCoach|r")
+  title:SetText("|cffffd100StatCap|r")
   UI.title = title
 
   local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
@@ -2382,7 +2382,7 @@ end
 ------------------------------------------------------------------------
 local function RetailDetect()
   local _, detClass = UnitClass("player")
-  local db = StatCoachDB
+  local db = StatCapDB
   local class, specName
   if db.manual then
     class = db.manualClass or detClass
@@ -2475,7 +2475,7 @@ local function RefreshRetail()
   UI.info:SetText(string.format("Lv %d  |cff%s%s|r  \226\128\162  %s",
     level, hex, class or "?", specName or "no spec"))
 
-  local manual = StatCoachDB.manual
+  local manual = StatCapDB.manual
   UI.classBtn:SetLabel(class or "?")
   UI.specBtn:SetLabel(specName or "?")
   UI.autoBtn:SetLabel(manual and "|cffffff00MANUAL|r" or "|cff40ff40AUTO|r")
@@ -2816,8 +2816,8 @@ local FOREVER_CRIT_PER_SKILL = 0.04
 
 -- Forever's spec and item verdicts. Forever has ONE specialization per class (named after
 -- the class) and keeps the three classic talent trees inside one trait tree, so the game
--- cannot be asked which tree you play: StatCoach adds up the ranks you bought per tree, by
--- talent name (StatCoachData_Forever.lua). The stat list for that tree is Era's (Wowhead
+-- cannot be asked which tree you play: StatCap adds up the ranks you bought per tree, by
+-- talent name (StatCapData_Forever.lua). The stat list for that tree is Era's (Wowhead
 -- Classic) until Forever's own level-60 guides exist, with Forever's own guide where Classic
 -- has none. Everything lives on ns: this file sits at Lua's limit of 200 locals per chunk.
 do
@@ -2905,7 +2905,7 @@ do
       end
     end
     local pc, ps = class, detected
-    local db = StatCoachDB
+    local db = StatCapDB
     if db and db.manual and E then
       if E.classes[db.manualClass or ""] then pc = db.manualClass end
       local pcd = E.classes[pc or ""]
@@ -2979,7 +2979,7 @@ do
     scanTip:ClearLines()
     if pcall(scanTip.SetHyperlink, scanTip, link) then
       for i = 2, scanTip:NumLines() do
-        local fs = _G["StatCoachScanTipTextLeft" .. i]
+        local fs = _G["StatCapScanTipTextLeft" .. i]
         local text = fs and fs:GetText()
         if type(text) == "string" and not isSecretValue(text) then
           local low = text:lower()
@@ -3097,7 +3097,7 @@ local function RefreshForever()
     level, hex, pickClass or "?", specName or "no talents yet"))
 
   -- Class / spec row: AUTO follows your talent points, MANUAL browses
-  local manual = StatCoachDB.manual
+  local manual = StatCapDB.manual
   UI.row1:Show()
   UI.classBtn:SetLabel(pickClass or "?")
   UI.specBtn:SetLabel(specName or "?")
@@ -3368,7 +3368,7 @@ local function RefreshForever()
   local defText = rawget(_G, "DEFAULT_STATDEFENSE_TOOLTIP")
   if type(defText) == "string" then defCap = tonumber(defText:match("(%d%d%d)")) or defCap end
   UI.infoParts = {
-    "StatCoach on World of Warcraft: Forever coaches from what the game itself states - nothing here is " ..
+    "StatCap on World of Warcraft: Forever coaches from what the game itself states - nothing here is " ..
     "carried over from Classic by assumption.",
     string.format("HIT. Forever's own hit tooltip says that to never miss a target of your level you need " ..
       "%s%% melee or ranged hit and %s%% spell hit, and against raid bosses %s%% and %s%%.%s The bar " ..
@@ -3384,7 +3384,7 @@ local function RefreshForever()
     (#list > 0) and ("STAT LIST. " .. (sd.notes or "") .. " " .. (sd.source or "") .. " Forever's own guides " ..
       "have no level-60 order yet, so until they do, this list and the upgrade line on item tooltips follow " ..
       "it - with weapon damage first for melee and hunters, as Forever's guides put it.")
-      or "STAT LIST. Spend a talent point and StatCoach reads your tree from it - or pick one with the " ..
+      or "STAT LIST. Spend a talent point and StatCap reads your tree from it - or pick one with the " ..
       "buttons above. Upgrade lines on item tooltips follow the list of your tree.",
   }
   if UI.notesPopup and UI.notesPopup:IsShown() then RefreshNotes("Forever") end
@@ -3453,7 +3453,7 @@ UI.RefreshMists = function()
     level, hex, class or "?", specName or "no spec"))
 
   -- Class / spec row, as on retail: AUTO follows the character, MANUAL browses.
-  local manual = StatCoachDB.manual
+  local manual = StatCapDB.manual
   UI.row1:Show()
   UI.classBtn:SetLabel(class or "?")
   UI.specBtn:SetLabel(specName or "?")
@@ -3673,7 +3673,7 @@ UI.RefreshMists = function()
     UI.infoParts[#UI.infoParts + 1] = string.format("SPELL HIT. The game's own character sheet starts " ..
       "a raid boss at %.1f%% spell miss and takes your hit off that. Your expertise counts toward it " ..
       "too - hit and expertise together fill the %.1f%% - but the sheet leaves expertise out of the " ..
-      "spell hit it shows. StatCoach adds it in, so the bar can read higher than the sheet.",
+      "spell hit it shows. StatCap adds it in, so the bar can read higher than the sheet.",
       base("BaseMissChanceSpell", 3), base("BaseMissChanceSpell", 3))
   elseif attack then
     UI.infoParts[#UI.infoParts + 1] = string.format("HIT. The game's own character sheet starts a raid " ..
@@ -3767,7 +3767,7 @@ ns.EraPick = function()
     end
   end
   local pc, ps = class, detected
-  local db = StatCoachDB
+  local db = StatCapDB
   if db and db.manual and E then
     if E.classes[db.manualClass or ""] then pc = db.manualClass end
     local pcd = E.classes[pc or ""]
@@ -3800,7 +3800,7 @@ UI.RefreshEra = function()
     level, hex, class or "?", specName or "no talents yet", sod and "  \226\128\162  Season of Discovery" or ""))
 
   -- Class / spec row: AUTO follows the character, MANUAL browses.
-  local manual = StatCoachDB.manual
+  local manual = StatCapDB.manual
   UI.row1:Show()
   UI.classBtn:SetLabel(class or "?")
   UI.specBtn:SetLabel(specName or "?")
@@ -4030,8 +4030,8 @@ UI.RefreshEra = function()
       "It only rises while you fight with that weapon.", lag.kind, lag.rank, lag.max, costText(critCost(lag)),
       hurtsHit and " and raises the hit you need" or "")
   elseif not sd then
-    now = level < 10 and "Talents start at level 10 - StatCoach reads your spec from where you spend them."
-      or "Spend a talent point and StatCoach reads your spec from it."
+    now = level < 10 and "Talents start at level 10 - StatCap reads your spec from where you spend them."
+      or "Spend a talent point and StatCap reads your spec from it."
   elseif sd.role == "HEALER" then
     now = "Healers have no hit cap." .. (list[1] and (" " .. list[1] .. " comes first for you.") or "")
   elseif mainHit and mainHit.cur < mainHit.cap - 0.005 and (vsBoss or mainHit.cur > 0) then
@@ -4087,7 +4087,7 @@ UI.RefreshEra = function()
     UI.infoParts[#UI.infoParts + 1] = "SPELL HIT. A raid boss resists 17% of your spells, and 1% always gets " ..
       "resisted - so 16% spell hit is the cap (3% against a target of your level)." ..
       (talentHit > 0 and string.format(" The game's spell hit number leaves out talents that only work for " ..
-        "one school; StatCoach adds your %d%% from them.", talentHit) or "")
+        "one school; StatCap adds your %d%% from them.", talentHit) or "")
   end
   if tank then
     UI.infoParts[#UI.infoParts + 1] = "DEFENSE. 440 defense stops raid bosses from landing critical strikes on you."
@@ -4150,7 +4150,7 @@ function Refresh()
   UI.info:SetText(string.format("Lv %d  |cff%s%s|r  \226\128\162  %s  (%s)",
     level, hex, class, spec, ctxLabel))
 
-  local manual = StatCoachDB.manual
+  local manual = StatCapDB.manual
   UI.classBtn:SetLabel(class)
   UI.specBtn:SetLabel(spec)
   UI.autoBtn:SetLabel(manual and "|cffffff00MANUAL|r" or "|cff40ff40AUTO|r")
@@ -4316,37 +4316,37 @@ local function currentPick()
 end
 
 UI.cycleClass = function(dir)
-  if not StatCoachDB.manual then return end
+  if not StatCapDB.manual then return end
   dir = dir or 1
   local order, classes = browseTables()
-  local class = StatCoachDB.manualClass or DetectClass()
+  local class = StatCapDB.manualClass or DetectClass()
   if not classes[class] then class = order[1] end
   local n = #order
   local i = indexOf(order, class)
   local nextClass = order[((i - 1 + dir) % n) + 1]
-  StatCoachDB.manualClass = nextClass
-  StatCoachDB.manualSpec = classes[nextClass].specOrder[1]
+  StatCapDB.manualClass = nextClass
+  StatCapDB.manualSpec = classes[nextClass].specOrder[1]
   Refresh()
 end
 
 UI.cycleSpec = function(dir)
-  if not StatCoachDB.manual then return end
+  if not StatCapDB.manual then return end
   dir = dir or 1
   local order, classes = browseTables()
-  local class = StatCoachDB.manualClass or DetectClass()
+  local class = StatCapDB.manualClass or DetectClass()
   if not classes[class] then class = order[1] end
   local cd = classes[class]
   local _, curSpec = currentPick()
   local so = cd.specOrder
   local n = #so
   local i = indexOf(so, curSpec)
-  StatCoachDB.manualClass = class
-  StatCoachDB.manualSpec = so[((i - 1 + dir) % n) + 1]
+  StatCapDB.manualClass = class
+  StatCapDB.manualSpec = so[((i - 1 + dir) % n) + 1]
   Refresh()
 end
 
 UI.toggleMode = function()
-  local db = StatCoachDB
+  local db = StatCapDB
   if db.manual then
     db.manual = false
   else
@@ -4367,17 +4367,17 @@ UI.cycleContext = function(dir)
   local _, _, cur = Resolve()
   local n = #order
   local i = indexOf(order, cur)
-  StatCoachDB.contextMode = order[((i - 1 + dir) % n) + 1]
+  StatCapDB.contextMode = order[((i - 1 + dir) % n) + 1]
   Refresh()
 end
 
--- Close the main window and every StatCoach popup (gems / enchants)
+-- Close the main window and every StatCap popup (gems / enchants)
 UI.hideAll = function()
   if UI.frame then UI.frame:Hide() end
   if UI.gemPopup then UI.gemPopup:Hide() end
   if UI.enchPopup then UI.enchPopup:Hide() end
   if UI.notesPopup then UI.notesPopup:Hide() end
-  StatCoachDB.shown = false
+  StatCapDB.shown = false
 end
 
 ------------------------------------------------------------------------
@@ -4400,7 +4400,7 @@ end
 -- window happens to redraw.
 local badgeHolders = {}
 local function BadgeSurfaceOn(surface)
-  local b = StatCoachDB and StatCoachDB.badges
+  local b = StatCapDB and StatCapDB.badges
   return not (surface and b and b[surface] == false)
 end
 -- Both switches must work in BOTH directions at once, without waiting for the
@@ -4429,7 +4429,7 @@ local ApplyGlowBadge
 -- alternative was a special case per setting, and the ones without a special
 -- case are exactly the ones that look broken.
 local function RefreshBadges()
-  local master = not StatCoachDB or StatCoachDB.bagBadge
+  local master = not StatCapDB or StatCapDB.bagBadge
   for _, h in ipairs(badgeHolders) do
     local pct = (master and h.scLink and BadgeSurfaceOn(h.scSurface))
       and bagUpgradePct(h.scLink) or nil
@@ -4445,7 +4445,7 @@ end
 -- Everything below is APPEARANCE. The weights and the caps are deliberately not
 -- in here: knowing where TBC's caps sit, and scoring a capped stat at nearly
 -- nothing without being told to, is the whole point of the addon. Pawn already
--- exists for people who want to tune weights, and a StatCoach whose numbers you
+-- exists for people who want to tune weights, and a StatCap whose numbers you
 -- can break is just a worse Pawn.
 local UPGRADE_FLOORS = {
   { 1,  "anything (1%)" },
@@ -4476,7 +4476,7 @@ local BADGE_SURFACES = {
 -- Right-click settings menu -- tries the modern Menu API, falls back to EasyMenu
 local settingsMenuFrame
 local function ShowSettingsMenu(anchor)
-  local db = StatCoachDB
+  local db = StatCapDB
   db.badges = db.badges or {}
   local function toggleSurface(key)
     -- Spelled out rather than an and/or one-liner: the value being flipped is
@@ -4493,13 +4493,13 @@ local function ShowSettingsMenu(anchor)
     if UI.frame then UI.frame:ClearAllPoints(); UI.frame:SetPoint("CENTER") end
   end
   local function hideMinimap()
-    if not db.minimap.hide then StatCoach_ToggleMinimap() end
+    if not db.minimap.hide then StatCap_ToggleMinimap() end
   end
 
   -- 1) modern Menu API (Anniversary / retail-based client)
   if MenuUtil and MenuUtil.CreateContextMenu then
     local ok = pcall(MenuUtil.CreateContextMenu, anchor or UIParent, function(_, root)
-      root:CreateTitle("StatCoach")
+      root:CreateTitle("StatCap")
       root:CreateCheckbox("Tooltip verdict line", function() return db.tooltip end,
         function() db.tooltip = not db.tooltip end)
       root:CreateCheckbox("Gem hint on empty sockets", function() return db.gemHints ~= false end,
@@ -4543,9 +4543,9 @@ local function ShowSettingsMenu(anchor)
 
   -- 2) legacy EasyMenu fallback
   if type(EasyMenu) == "function" then
-    settingsMenuFrame = settingsMenuFrame or CreateFrame("Frame", "StatCoachSettingsMenu", UIParent, "UIDropDownMenuTemplate")
+    settingsMenuFrame = settingsMenuFrame or CreateFrame("Frame", "StatCapSettingsMenu", UIParent, "UIDropDownMenuTemplate")
     local menu = {
-      { text = "StatCoach", isTitle = true, notCheckable = true },
+      { text = "StatCap", isTitle = true, notCheckable = true },
       { text = "Tooltip verdict line", keepShownOnClick = true, checked = function() return db.tooltip end,
         func = function() db.tooltip = not db.tooltip end },
       { text = "Gem hint on empty sockets", keepShownOnClick = true,
@@ -4605,7 +4605,7 @@ local function ShowSettingsMenu(anchor)
     if ok then return end
   end
 
-  print("|cffffd100StatCoach|r: couldn't open settings (MenuUtil=" .. tostring(MenuUtil ~= nil)
+  print("|cffffd100StatCap|r: couldn't open settings (MenuUtil=" .. tostring(MenuUtil ~= nil)
     .. ", EasyMenu=" .. tostring(type(EasyMenu)) .. "). Send me this line.")
 end
 
@@ -4619,7 +4619,7 @@ end
 -- loses the way in; on classic /stc is the way back.
 local LDB    = LibStub and LibStub("LibDataBroker-1.1", true)
 local DBIcon = LibStub and LibStub("LibDBIcon-1.0", true)
-local MM_NAME = "StatCoach"
+local MM_NAME = "StatCap"
 
 local mmObject = LDB and LDB:NewDataObject(MM_NAME, {
   type = "launcher",
@@ -4627,7 +4627,7 @@ local mmObject = LDB and LDB:NewDataObject(MM_NAME, {
   OnClick = function(self, button)
     if button == "RightButton" then ShowSettingsMenu(self)
     elseif UI.frame and UI.frame:IsShown() then UI.hideAll()
-    elseif UI.frame then UI.frame:Show(); StatCoachDB.shown = true; Refresh() end
+    elseif UI.frame then UI.frame:Show(); StatCapDB.shown = true; Refresh() end
   end,
   -- Left-click is guessable on a button whose whole job is clicking; RIGHT-click
   -- is not, and it is where every setting lives - including which windows the
@@ -4637,29 +4637,29 @@ local mmObject = LDB and LDB:NewDataObject(MM_NAME, {
   -- ended up with a canyon between them. Stacked and left-aligned reads as one
   -- list, with the clickable part gold and the explanation grey.
   OnTooltipShow = function(tt)
-    tt:AddLine("StatCoach")
+    tt:AddLine("StatCap")
     tt:AddLine("|cffd9b85aRight-click|r for settings and badge options", 0.6, 0.6, 0.6)
     tt:AddLine("|cffd9b85a/stc minimap|r hides this button", 0.5, 0.5, 0.5)
   end,
 })
 
 -- Global on purpose: the settings menu (built earlier in the file) calls it.
-function StatCoach_ToggleMinimap()
-  local db = StatCoachDB
+function StatCap_ToggleMinimap()
+  local db = StatCapDB
   db.minimap.hide = not db.minimap.hide
   if DBIcon and DBIcon:IsRegistered(MM_NAME) then
     if db.minimap.hide then DBIcon:Hide(MM_NAME) else DBIcon:Show(MM_NAME) end
   end
-  print("|cffffd100StatCoach|r: minimap button " .. (db.minimap.hide
+  print("|cffffd100StatCap|r: minimap button " .. (db.minimap.hide
     and "hidden - /stc opens the window, /stc minimap brings the button back" or "shown") .. ".")
 end
 
--- Called once the saved variables exist. StatCoachDB.minimap is the table
+-- Called once the saved variables exist. StatCapDB.minimap is the table
 -- LibDBIcon owns (hide, minimapPos, lock); the old minimapHidden /
 -- minimapX/Y / minimapAngle fields from the hand-rolled button are migrated
 -- and dropped.
 local function CreateMinimapButton()
-  local db = StatCoachDB
+  local db = StatCapDB
   db.minimap = db.minimap or {}
   if db.minimapHidden ~= nil then
     db.minimap.hide = db.minimapHidden and true or nil
@@ -4682,8 +4682,8 @@ local BADGE_SKULL = "|TInterface\\TargetingFrame\\UI-TargetingFrame-Skull:0|t"
 
 -- Global on purpose: the settings menu is built earlier in the file than the
 -- badge code, so it cannot see a local declared down here.
-function StatCoachPulseOn()
-  return not (StatCoachDB and StatCoachDB.noPulse)
+function StatCapPulseOn()
+  return not (StatCapDB and StatCapDB.noPulse)
 end
 
 -- surface = which switch in "Show badges in" owns this badge. Registering here
@@ -4714,7 +4714,7 @@ local function CreateGlowBadge(parent, surface)
   -- hide/show these constantly - without this the pulse dies after the first
   -- refresh and the badge goes static. Restart it every time we come back.
   holder:SetScript("OnShow", function(self)
-    if self.scOn and StatCoachPulseOn() and not self.pulse:IsPlaying() then self.pulse:Play() end
+    if self.scOn and StatCapPulseOn() and not self.pulse:IsPlaying() then self.pulse:Play() end
   end)
   return holder
 end
@@ -4723,7 +4723,7 @@ end
 -- purple skull (25%+ / empty slot). The skull texture is height 0 = follows the
 -- font size, so everything scales together via /stc badge N.
 ApplyGlowBadge = function(holder, pct, tier)
-  local size = (StatCoachDB and StatCoachDB.badgeSize) or 18
+  local size = (StatCapDB and StatCapDB.badgeSize) or 18
   if holder.scSize ~= size then
     -- DAMAGE_TEXT_FONT (skurri) is the fat font floating combat numbers use -
     -- it reads "bold" at any size; THICKOUTLINE keeps it crisp on busy icons.
@@ -4749,7 +4749,7 @@ ApplyGlowBadge = function(holder, pct, tier)
   -- Some people cannot stand animated UI, and a badge that sits still is still
   -- a badge. Stopping the group leaves the glow wherever the animation was, so
   -- put the alpha back to something deliberate.
-  if StatCoachPulseOn() then
+  if StatCapPulseOn() then
     if not holder.pulse:IsPlaying() then holder.pulse:Play() end
   else
     if holder.pulse:IsPlaying() then holder.pulse:Stop() end
@@ -4802,18 +4802,22 @@ local function SetupBaganatorBadge()
     if ok then return res end
     if not UI.bagErrShown then
       UI.bagErrShown = true   -- once per session; the bags keep working
-      print("|cffffd100StatCoach|r: badge skipped in Baganator (" .. tostring(res) .. ")")
+      print("|cffffd100StatCap|r: badge skipped in Baganator (" .. tostring(res) .. ")")
     end
     return false
   end
 
+  -- The id keeps the old name on purpose: Baganator stores a player's corner
+  -- choice under it, and a new id would take the badge out of every bag that had
+  -- it switched on. While an old StatCoach copy still runs (the session before
+  -- its reload) it holds this id, Baganator asserts, and the pcall keeps it quiet.
   local ok, err = pcall(baganator.API.RegisterCornerWidget,
-    "StatCoach Upgrade", "statcoach_upgrade",
+    "StatCap Upgrade", "statcoach_upgrade",
     OnUpdate, function(parent) return CreateGlowBadge(parent, "bags") end,
     { corner = "top_left", priority = 3 })
   if ok then
     UI.baganatorDone = true
-    UI.bagStatus = "registered OK - if no '+', enable 'StatCoach Upgrade' in Baganator settings -> icon corners"
+    UI.bagStatus = "registered OK - if no '+', enable 'StatCap Upgrade' in Baganator settings -> icon corners"
   else
     UI.bagStatus = "register FAILED: " .. tostring(err)
   end
@@ -5155,7 +5159,7 @@ local function GetTipBar(i)
   b:SetBackdropBorderColor(0, 0, 0, 1)
   -- TWO texts on the bar (label left, numbers right) - the third, centred one
   -- is what collided on narrow tooltips, so the need-rating lives only in the
-  -- StatCoach window now. Compact: one line per cap.
+  -- StatCap window now. Compact: one line per cap.
   b.label = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   b.label:SetPoint("LEFT", 4, 0)
   b.value = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -5247,7 +5251,7 @@ if not RETAIL and not MISTS and not ns.ERA then
       -- Healers have no hard caps - say so instead of silence, so an empty
       -- block never reads as "the addon is broken".
       tt:AddLine(" ")
-      tt:AddLine("StatCoach: no hard caps for this spec", 0.6, 0.6, 0.6)
+      tt:AddLine("StatCap: no hard caps for this spec", 0.6, 0.6, 0.6)
       return true
     end
     -- Filter to the hovered stat's caps. A cap-stat with NO matching bar for
@@ -5264,7 +5268,7 @@ if not RETAIL and not MISTS and not ns.ERA then
       bars = filtered
     end
     tt:AddLine(" ")
-    tt:AddLine("StatCoach - caps (vs boss +3)", 1, 0.82, 0)
+    tt:AddLine("StatCap - caps (vs boss +3)", 1, 0.82, 0)
     for i, b in ipairs(bars) do
       tt:AddLine(" ")   -- reserve the vertical space the bar sits on
       local lineFS = _G["GameTooltipTextLeft" .. tt:NumLines()]
@@ -5367,7 +5371,7 @@ if RETAIL and not FOREVER then   -- the DR ladder is a level-90 retail rule
     local bracket, over, width, dr = DRState(name, r)
     if not dr then return false end
     tt:AddLine(" ")
-    tt:AddLine("StatCoach - diminishing returns", 1, 0.82, 0)
+    tt:AddLine("StatCap - diminishing returns", 1, 0.82, 0)
     tt:AddLine(" ")   -- reserve the line the bar sits on
     local lineFS = _G["GameTooltipTextLeft" .. tt:NumLines()]
     local bar = GetTipBar(1)
@@ -5445,6 +5449,44 @@ if RETAIL and not FOREVER then   -- the DR ladder is a level-90 retail rule
 end
 
 ------------------------------------------------------------------------
+-- The old name. StatCap was called StatCoach until 1.2.0, and a player can
+-- still have the old StatCoach folder installed beside the new one. Every TOC
+-- lists StatCoach under OptionalDeps, so the client loads the old copy first
+-- and its saved table is already in memory when our ADDON_LOADED arrives:
+-- carry the settings over once, then switch the old copy off for every
+-- character (no character argument = all, as Blizzard's own AddOnUtil calls
+-- it) so the two never run side by side after the next reload.
+-- A field on ns, not a local: the main chunk sits at Lua's 200-locals limit.
+------------------------------------------------------------------------
+ns.TakeOverOldName = function()
+  local isLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+  local okLoaded, oldRuns = false, false
+  if isLoaded then okLoaded, oldRuns = pcall(isLoaded, "StatCoach") end
+  oldRuns = okLoaded and oldRuns and true or false
+  local carried = false
+  if StatCapDB == nil and type(StatCoachDB) == "table" then
+    local function copy(v, seen)
+      if type(v) ~= "table" then return v end
+      if seen[v] then return seen[v] end
+      local c = {}
+      seen[v] = c
+      for k, x in pairs(v) do c[copy(k, seen)] = copy(x, seen) end
+      return c
+    end
+    StatCapDB = copy(StatCoachDB, {})
+    carried = true
+  end
+  if oldRuns then
+    local disable = (C_AddOns and C_AddOns.DisableAddOn) or DisableAddOn
+    if disable then pcall(disable, "StatCoach") end
+    print("|cffffd100StatCap:|r StatCoach is now called StatCap. "
+      .. (carried and "Your settings came along. " or "")
+      .. "The old StatCoach copy is switched off from your next /reload, and its folder can be deleted.")
+  end
+  ns.oldName = { carried = carried, oldRan = oldRuns }   -- read by /stc dump
+end
+
+------------------------------------------------------------------------
 -- Events + init
 ------------------------------------------------------------------------
 local ev = CreateFrame("Frame")
@@ -5472,8 +5514,9 @@ end
 ev:SetScript("OnEvent", function(_, event, arg1)
   if FOREVER and event ~= "ADDON_LOADED" and event ~= "COMBAT_RATING_UPDATE" then ns.foreverTalents = nil end
   if event == "ADDON_LOADED" and arg1 == ADDON then
-    StatCoachDB = StatCoachDB or {}
-    local db = StatCoachDB
+    ns.TakeOverOldName()
+    StatCapDB = StatCapDB or {}
+    local db = StatCapDB
     db.badges = db.badges or {}   -- per-surface badge switches; absent = on
     -- Diagnostics are for reading once, not for living in the database. Both
     -- /stc stats and /stc globals write a snapshot; drop it at the next login so
@@ -5510,7 +5553,7 @@ end)
 -- Public, for GearCoach: "what should this slot be enchanted with?" Answers for
 -- the character's LIVE role (talents), which is the enchant you would actually
 -- buy right now. Returns name, sourceText-or-nil; nil for slots with no enchant.
-function StatCoach_EnchantFor(slot)
+function StatCap_EnchantFor(slot)
   local role = curCtx and curCtx.role
   if not role or RETAIL then return nil end
   for _, e in ipairs((D.ENCHANTS or {})[role] or {}) do
@@ -5520,6 +5563,8 @@ function StatCoach_EnchantFor(slot)
   end
   return nil
 end
+-- GearCoach 1.9 asks by the name from before the rename.
+StatCoach_EnchantFor = StatCap_EnchantFor
 
 -- /stc dump: write what the panel shows RIGHT NOW into SavedVariables - every line,
 -- every bar with its text, fill and colour, and where each one sits - so wording and
@@ -5618,7 +5663,7 @@ local function DumpPanel()
         scanTip:ClearLines()
         if pcall(scanTip.SetHyperlink, scanTip, link) then
           for i = 2, scanTip:NumLines() do
-            local fs = _G["StatCoachScanTipTextLeft" .. i]
+            local fs = _G["StatCapScanTipTextLeft" .. i]
             local t = fs and fs:GetText()
             if t and (t:lower():find("hit") or t:lower():find("skill")) then lines[#lines + 1] = t end
           end
@@ -5669,7 +5714,7 @@ local function DumpPanel()
       scanTip:ClearLines()
       if pcall(scanTip.SetHyperlink, scanTip, link) then
         for i = 1, math.min(scanTip:NumLines(), 16) do
-          local fs = _G["StatCoachScanTipTextLeft" .. i]
+          local fs = _G["StatCapScanTipTextLeft" .. i]
           local text = fs and fs:GetText()
           if text then lines[#lines + 1] = sec(text) end
         end
@@ -5698,28 +5743,32 @@ local function DumpPanel()
                           pick = (pc or "?") .. " / " .. (ps or "none"), detected = detected },
               verdicts = scores }
   end
-  StatCoachDB.panelDump = d
-  print("|cffffd100StatCoach|r: panel written (" .. #d.bars .. " bars, " .. #d.lines .. " lines) - /reload saves it to disk.")
+  d.oldName = ns.oldName
+  StatCapDB.panelDump = d
+  print("|cffffd100StatCap|r: panel written (" .. #d.bars .. " bars, " .. #d.lines .. " lines) - /reload saves it to disk.")
 end
 
-SLASH_STATCOACH1 = "/statcoach"
-SLASH_STATCOACH2 = "/stc"
-SlashCmdList["STATCOACH"] = function(msg)
+-- /statcoach is the command from before the rename. It still answers, so a habit
+-- or a macro does not stop working on the day the name changed.
+SLASH_STATCAP1 = "/statcap"
+SLASH_STATCAP2 = "/stc"
+SLASH_STATCAP3 = "/statcoach"
+SlashCmdList["STATCAP"] = function(msg)
   msg = (msg or ""):lower():gsub("%s+", "")
   if msg == "dump" then
     DumpPanel()
   elseif msg == "reset" then
-    StatCoachDB.point, StatCoachDB.x, StatCoachDB.y = "CENTER", 0, 0
+    StatCapDB.point, StatCapDB.x, StatCapDB.y = "CENTER", 0, 0
     if UI.frame then UI.frame:ClearAllPoints(); UI.frame:SetPoint("CENTER") end
-    print("|cffffd100StatCoach|r: position reset.")
+    print("|cffffd100StatCap|r: position reset.")
   elseif msg == "tooltip" then
-    StatCoachDB.tooltip = not StatCoachDB.tooltip
-    print("|cffffd100StatCoach|r: tooltip verdict " .. (StatCoachDB.tooltip and "ON" or "OFF") .. ".")
+    StatCapDB.tooltip = not StatCapDB.tooltip
+    print("|cffffd100StatCap|r: tooltip verdict " .. (StatCapDB.tooltip and "ON" or "OFF") .. ".")
   elseif msg == "bag" then
     SetupBaganatorBadge()
-    print("|cffffd100StatCoach|r bag badge: " .. (UI.bagStatus or "not attempted yet"))
+    print("|cffffd100StatCap|r bag badge: " .. (UI.bagStatus or "not attempted yet"))
   elseif msg == "caps" then
-    print("|cffffd100StatCoach|r cap tooltips: " .. tostring(UI.capRowsHooked or "not active (retail has no caps)"))
+    print("|cffffd100StatCap|r cap tooltips: " .. tostring(UI.capRowsHooked or "not active (retail has no caps)"))
   elseif msg == "stats" then
     -- Reads every equipped item TWICE: once with the patterns built from this
     -- client's own wordings, once with the old hand-written English ones. On an
@@ -5745,7 +5794,7 @@ SlashCmdList["STATCOACH"] = function(msg)
     report.inspiringPresence = tostring(spellName(INSPIRING_PRESENCE))
     local diffs = 0
     report.patternCount = #PARSE_LOCALE
-    print("|cffffd100StatCoach|r stat patterns (from client wordings | old English):")
+    print("|cffffd100StatCap|r stat patterns (from client wordings | old English):")
     for slot = 1, 18 do
       local link = GetInventoryItemLink("player", slot)
       if link then
@@ -5775,10 +5824,10 @@ SlashCmdList["STATCOACH"] = function(msg)
       end
     end
     report.diffCount = diffs
-    StatCoachDB.statCheck = report
+    StatCapDB.statCheck = report
     print(("green = the two agree, red = they differ (<< marks the stat). %d of %d items differ.")
       :format(diffs, #report.lines))
-    print("Saved to StatCoachDB.statCheck - /reload writes it to disk.")
+    print("Saved to StatCapDB.statCheck - /reload writes it to disk.")
   elseif msg == "globals" then
     -- The tooltip has to stay the stat source on this client, so the way to make
     -- it speak other languages is to build its patterns from the game's OWN
@@ -5800,47 +5849,47 @@ SlashCmdList["STATCOACH"] = function(msg)
     end
     local n = 0
     for _ in pairs(out.strings) do n = n + 1 end
-    StatCoachDB.globals = out
-    print(("|cffffd100StatCoach|r: captured %d wordings to StatCoachDB.globals - /reload writes it to disk."):format(n))
+    StatCapDB.globals = out
+    print(("|cffffd100StatCap|r: captured %d wordings to StatCapDB.globals - /reload writes it to disk."):format(n))
   elseif msg == "armor" then
-    StatCoachDB.armorStrict = not StatCoachDB.armorStrict
-    print("|cffffd100StatCoach|r: off-type armor is now "
-      .. (StatCoachDB.armorStrict and "HIDDEN (strict filter)" or "shown with a scoring penalty (default)") .. ".")
+    StatCapDB.armorStrict = not StatCapDB.armorStrict
+    print("|cffffd100StatCap|r: off-type armor is now "
+      .. (StatCapDB.armorStrict and "HIDDEN (strict filter)" or "shown with a scoring penalty (default)") .. ".")
   elseif msg:match("^icon") then
     -- msg has whitespace stripped, so "/stc icon 20" arrives as "icon20"
     local n = tonumber(msg:match("^icon(%d+)$"))
     if n then
-      StatCoachDB.iconSize = math.max(10, math.min(30, n))
-      print("|cffffd100StatCoach|r: upgrade icon size set to " .. StatCoachDB.iconSize .. ".")
+      StatCapDB.iconSize = math.max(10, math.min(30, n))
+      print("|cffffd100StatCap|r: upgrade icon size set to " .. StatCapDB.iconSize .. ".")
     else
-      print("|cffffd100StatCoach|r: icon size is " .. (StatCoachDB.iconSize or 14)
+      print("|cffffd100StatCap|r: icon size is " .. (StatCapDB.iconSize or 14)
         .. ". Use /stc icon 10-30 (default 14).")
     end
   elseif msg:match("^badge") then
     local n = tonumber(msg:match("^badge(%d+)$"))
     if n then
-      StatCoachDB.badgeSize = math.max(10, math.min(30, n))
+      StatCapDB.badgeSize = math.max(10, math.min(30, n))
       wipe(bagCache)
-      print("|cffffd100StatCoach|r: bag badge size set to " .. StatCoachDB.badgeSize
+      print("|cffffd100StatCap|r: bag badge size set to " .. StatCapDB.badgeSize
         .. " (reopen your bags to see it).")
     else
-      print("|cffffd100StatCoach|r: bag badge size is " .. (StatCoachDB.badgeSize or 18)
+      print("|cffffd100StatCap|r: bag badge size is " .. (StatCapDB.badgeSize or 18)
         .. ". Use /stc badge 10-30 (default 18).")
     end
   elseif msg == "calib" then
-    StatCoachDB.calib = not StatCoachDB.calib
-    local n = StatCoachDB.pctlog and #StatCoachDB.pctlog or 0
-    print("|cffffd100StatCoach|r: percent calibration logging "
-      .. (StatCoachDB.calib and "ON" or "OFF") .. " (" .. n .. " verdicts on file"
+    StatCapDB.calib = not StatCapDB.calib
+    local n = StatCapDB.pctlog and #StatCapDB.pctlog or 0
+    print("|cffffd100StatCap|r: percent calibration logging "
+      .. (StatCapDB.calib and "ON" or "OFF") .. " (" .. n .. " verdicts on file"
       .. (n >= 500 and " - FULL" or "") .. "). /reload writes to disk.")
   elseif msg == "calibwipe" then
-    StatCoachDB.pctlog, StatCoachDB.calib = nil, nil
-    print("|cffffd100StatCoach|r: calibration log deleted.")
+    StatCapDB.pctlog, StatCapDB.calib = nil, nil
+    print("|cffffd100StatCap|r: calibration log deleted.")
   elseif msg == "minimap" then
-    StatCoach_ToggleMinimap()
+    StatCap_ToggleMinimap()
   elseif UI.frame and UI.frame:IsShown() then
     UI.hideAll()
   elseif UI.frame then
-    UI.frame:Show(); StatCoachDB.shown = true; Refresh()
+    UI.frame:Show(); StatCapDB.shown = true; Refresh()
   end
 end
