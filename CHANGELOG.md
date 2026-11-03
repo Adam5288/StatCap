@@ -9,9 +9,9 @@
 
 ## StatCoach is now StatCap
 
-Same addon, new name. If the old StatCoach folder is still installed the first time you
-log in, StatCap takes over its settings and switches the old copy off from your next
-reload, so its folder can be deleted. /statcap opens the window, and /stc still does.
+Same addon, new name. Your settings come along the first time you log in. The entry
+"StatCap (old StatCoach settings)" in your AddOns list only holds those old settings and
+runs no code. /statcap, /stc and /statcoach all open and close the window.
 
 ---
 

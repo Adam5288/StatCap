@@ -60,6 +60,12 @@ jobs:
           ref: ${{ inputs.tag }}
           fetch-depth: 0
 
+      # The settings-only StatCoach folder must carry the same Interface and Version
+      # lines as the StatCap TOCs, or a client would skip it as out of date and no
+      # settings would carry over. Checked on the full tree, before the reduce step.
+      - name: The StatCoach settings folder matches the StatCap TOCs
+        run: python3 Tools/make_stub.py --check
+
       # One source tree serves both clients, and each client must receive only
       # its own files - exactly as the hand-built zips have always been. A retail
       # package carrying StatCap.toc would be loaded by a Classic client that
@@ -100,6 +106,22 @@ jobs:
             echo "Retail package: StatCap_Mainline.toc + both data files"
           fi
           ls -1 *.toc *.lua
+          # StatCap was called StatCoach until 1.2.0, and the game keeps saved settings
+          # under the folder name. Addon apps delete the old StatCoach folder on update,
+          # so the zip carries a settings-only StatCoach folder of its own (no code; see
+          # Tools/make_stub.py). It keeps the one TOC that matches the StatCap TOC kept
+          # above, under the old package's file name - Forever's plain one included.
+          # .pkgmeta's move-folders puts the folder next to StatCap.
+          if [ "${{ inputs.flavor }}" = "forever" ]; then
+            KEEP=StatCoach_Forever.toc
+          else
+            KEEP=$(ls -1 StatCap*.toc | sed 's/^StatCap/StatCoach/')
+          fi
+          for t in StatCoach/*.toc; do
+            if [ "$(basename "$t")" != "$KEEP" ]; then rm -f "$t"; fi
+          done
+          if [ "$KEEP" = "StatCoach_Forever.toc" ]; then mv StatCoach/StatCoach_Forever.toc StatCoach/StatCoach.toc; fi
+          ls -1 StatCoach
 
       # The tag says one version, the TOC says another, and the store believes
       # the TOC. Catch that here rather than in a player's out-of-date warning.

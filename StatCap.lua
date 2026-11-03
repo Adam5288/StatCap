@@ -5456,34 +5456,55 @@ if RETAIL and not FOREVER then   -- the DR ladder is a level-90 retail rule
 end
 
 ------------------------------------------------------------------------
--- The old name. StatCap was called StatCoach until 1.2.0, and a player can
--- still have the old StatCoach folder installed beside the new one. Every TOC
--- lists StatCoach under OptionalDeps, so the client loads the old copy first
--- and its saved table is already in memory when our ADDON_LOADED arrives:
--- carry the settings over once, then switch the old copy off for every
--- character in the client's list (no character argument, as Blizzard's own
--- AddOnUtil calls it: the whole account on retail, the realm being played on the
--- Classic clients, where another realm switches it off at its own first login)
--- so the two never run side by side after the next reload.
+-- The old name. StatCap was called StatCoach until 1.2.0. The game keeps an
+-- addon's saved settings under its FOLDER name, and addon apps delete the old
+-- StatCoach folder when they update to StatCap, so StatCap's zip carries a
+-- StatCoach folder of its own: no code, load-on-demand, holding only the old
+-- saved table (Tools/stub.toc). On StatCap's very first load we load that folder,
+-- copy the settings once, and switch it off again.
+-- A player who unzips by hand over the old folder gets its TOC replaced by the
+-- settings-only one, so the old code stops loading. If an old full copy still
+-- runs anyway, every TOC lists StatCoach under OptionalDeps, so it loaded first:
+-- its table is copied the same way, and it is quieted for this session.
+-- Switching off uses no character argument (as Blizzard's AddOnUtil and WeakAuras
+-- do): the whole account on retail, the realm being played on the Classic clients.
 -- A field on ns, not a local: the main chunk sits at Lua's 200-locals limit.
 ------------------------------------------------------------------------
 ns.TakeOverOldName = function()
-  local isLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
-  local okLoaded, oldRuns = false, false
-  if isLoaded then okLoaded, oldRuns = pcall(isLoaded, "StatCoach") end
-  oldRuns = okLoaded and oldRuns and true or false
+  local api = C_AddOns or {}
+  -- Only the old full addon defines the STATCOACH slash command; the settings-only
+  -- folder has no code. Read before anything below reroutes it.
+  local oldRuns = type(SlashCmdList) == "table" and SlashCmdList.STATCOACH ~= nil
+  local firstRun = StatCapDB == nil
   local carried = false
-  if StatCapDB == nil and type(StatCoachDB) == "table" then
-    local function copy(v, seen)
-      if type(v) ~= "table" then return v end
-      if seen[v] then return seen[v] end
-      local c = {}
-      seen[v] = c
-      for k, x in pairs(v) do c[copy(k, seen)] = copy(x, seen) end
-      return c
+  if firstRun then
+    if type(StatCoachDB) ~= "table" then
+      -- Switched on first: the old StatCoach may have been off for this character,
+      -- and LoadAddOn refuses an addon that is off. Missing folder = nothing loads.
+      local enable = api.EnableAddOn or EnableAddOn
+      local load = api.LoadAddOn or LoadAddOn
+      if enable then pcall(enable, "StatCoach") end
+      if load then pcall(load, "StatCoach") end
     end
-    StatCapDB = copy(StatCoachDB, {})
-    carried = true
+    if type(StatCoachDB) == "table" then
+      local function copy(v, seen)
+        if type(v) ~= "table" then return v end
+        if seen[v] then return seen[v] end
+        local c = {}
+        seen[v] = c
+        for k, x in pairs(v) do c[copy(k, seen)] = copy(x, seen) end
+        return c
+      end
+      StatCapDB = copy(StatCoachDB, {})
+      StatCapDB.fromStatCoach = true
+      carried = true
+    end
+  end
+  if firstRun or oldRuns then
+    -- Off from the next load for every character in the client's list: the old code
+    -- must not run again, and the settings folder has done its job.
+    local disable = api.DisableAddOn or DisableAddOn
+    if disable then pcall(disable, "StatCoach") end
   end
   if oldRuns then
     -- Until the reload both copies run. Quiet the old one for this session: its
@@ -5499,13 +5520,13 @@ ns.TakeOverOldName = function()
       pcall(icon.Hide, icon, "StatCoach")
       if icon.RemoveButtonFromCompartment then pcall(icon.RemoveButtonFromCompartment, icon, "StatCoach") end
     end
-    local disable = (C_AddOns and C_AddOns.DisableAddOn) or DisableAddOn
-    if disable then pcall(disable, "StatCoach") end
-    print("|cffffd100StatCap:|r StatCoach is now called StatCap. "
-      .. (carried and "Your settings came along. " or "")
-      .. "Type /reload to finish the switch.")
   end
-  ns.oldName = { carried = carried, oldRan = oldRuns }   -- read by /stc dump
+  if carried or oldRuns then
+    print("|cffffd100StatCap:|r StatCoach is now called StatCap."
+      .. (carried and " Your settings came along." or "")
+      .. (oldRuns and " Type /reload to finish the switch." or ""))
+  end
+  ns.oldName = { carried = carried, oldRan = oldRuns, firstRun = firstRun }   -- read by /stc dump
 end
 
 ------------------------------------------------------------------------

@@ -69,6 +69,7 @@ One source tree serves every client. Each package carries only its own client's 
 | `StatCapData_Era.lua` | Classic Era stat lists per talent tree |
 | `StatCapData_Mists.lua` | Mists of Pandaria Classic stat lists per specialization |
 | `StatCapData_Forever.lua` | Forever: which tree each talent sits in, plus Forever's own lists |
+| `StatCoach/` | Settings-only folder that ships next to StatCap (StatCap was called StatCoach until 1.2.0): one TOC per client, no code, written by `Tools/make_stub.py` |
 | `Libs/` | LibStub, CallbackHandler, LibDataBroker, LibDBIcon (minimap button) |
 
 Which TOC loads which data file: TBC loads `StatCapData.lua` only; retail adds `StatCapData_Retail.lua`; Classic Era adds `StatCapData_Era.lua`; Mists adds `StatCapData_Mists.lua`; Forever adds the retail, Era and Forever files.

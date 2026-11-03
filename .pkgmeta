@@ -11,6 +11,13 @@ manual-changelog:
   filename: RELEASE_NOTES.md
   markup-type: markdown
 
+# StatCap was called StatCoach until 1.2.0. The release workflow's reduce step
+# writes a settings-only StatCoach folder (Tools/make_stub.py); it ships as its own
+# folder next to StatCap, so StatCap can read the old saved settings even after an
+# addon app has deleted the old StatCoach folder.
+move-folders:
+  StatCap/StatCoach: StatCoach
+
 # Repository furniture that must never reach a player's AddOns folder.
 ignore:
   - CHANGELOG.md
