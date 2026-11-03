@@ -1629,7 +1629,14 @@ do
     return ok and yes == true
   end
   local function hookTooltipItem()
-    if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
+    -- The data pipeline counts only when GameTooltip itself runs it. TBC Anniversary
+    -- (2.5.6) loads TooltipDataProcessor but builds GameTooltip from the classic
+    -- template, which never calls ProcessInfo, so a post-call there never fires and
+    -- the verdict line silently disappeared (read in the 2.5.6 client's own code,
+    -- 3 Nov 2026). Retail and Forever mix GameTooltipDataMixin into GameTooltip;
+    -- Classic Era does not load the pipeline at all.
+    if type(GameTooltip.ProcessInfo) == "function"
+       and TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
       TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tt)
         if tt ~= GameTooltip then return end
         local link
@@ -5454,8 +5461,10 @@ end
 -- lists StatCoach under OptionalDeps, so the client loads the old copy first
 -- and its saved table is already in memory when our ADDON_LOADED arrives:
 -- carry the settings over once, then switch the old copy off for every
--- character (no character argument = all, as Blizzard's own AddOnUtil calls
--- it) so the two never run side by side after the next reload.
+-- character in the client's list (no character argument, as Blizzard's own
+-- AddOnUtil calls it: the whole account on retail, the realm being played on the
+-- Classic clients, where another realm switches it off at its own first login)
+-- so the two never run side by side after the next reload.
 -- A field on ns, not a local: the main chunk sits at Lua's 200-locals limit.
 ------------------------------------------------------------------------
 ns.TakeOverOldName = function()
@@ -5477,11 +5486,24 @@ ns.TakeOverOldName = function()
     carried = true
   end
   if oldRuns then
+    -- Until the reload both copies run. Quiet the old one for this session: its
+    -- window and minimap button go away, and /stc and /statcoach reach StatCap
+    -- whichever registration the chat frame reads last. Its tooltip hook cannot be
+    -- taken back, so the reload is still asked for. All of it after the copy above,
+    -- since hiding the old window writes into the old table.
+    if SlashCmdList and SlashCmdList.STATCAP then SlashCmdList.STATCOACH = SlashCmdList.STATCAP end
+    local oldFrame = rawget(_G, "StatCoachFrame")
+    if oldFrame and oldFrame.Hide then pcall(oldFrame.Hide, oldFrame) end
+    local icon = LibStub and LibStub("LibDBIcon-1.0", true)
+    if icon then
+      pcall(icon.Hide, icon, "StatCoach")
+      if icon.RemoveButtonFromCompartment then pcall(icon.RemoveButtonFromCompartment, icon, "StatCoach") end
+    end
     local disable = (C_AddOns and C_AddOns.DisableAddOn) or DisableAddOn
     if disable then pcall(disable, "StatCoach") end
     print("|cffffd100StatCap:|r StatCoach is now called StatCap. "
       .. (carried and "Your settings came along. " or "")
-      .. "The old StatCoach copy is switched off from your next /reload, and its folder can be deleted.")
+      .. "Type /reload to finish the switch.")
   end
   ns.oldName = { carried = carried, oldRan = oldRuns }   -- read by /stc dump
 end

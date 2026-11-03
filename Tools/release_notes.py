@@ -34,7 +34,8 @@ NAME = r"Stat(?:Cap|Coach)"
 
 def section(version, label):
     """The text under '# StatCap <version> (<label>)' - or, when that flavor has no
-    section of its own, under '# StatCap <version>' - up to the next heading."""
+    section of its own, under '# StatCap <version>' - up to the next heading.
+    Returns (body, shared): shared is True when the flavor-less section was used."""
     text = io.open(CHANGELOG, encoding="utf-8").read()
     m = None
     for tail in (r" \(%s\)" % re.escape(label), ""):
@@ -43,12 +44,12 @@ def section(version, label):
         if m:
             break
     if not m:
-        return None
+        return None, False
     rest = text[m.end():]
     nxt = re.search(r"^# %s " % NAME, rest, re.M)
     body = rest[: nxt.start()] if nxt else rest
     # The separator between entries belongs to the file, not to the entry.
-    return body.strip().rstrip("-").strip()
+    return body.strip().rstrip("-").strip(), tail == ""
 
 
 def main():
@@ -60,7 +61,7 @@ def main():
     if not label:
         sys.exit("unknown flavor %r - expected tbc, retail, forever, mists or era" % sys.argv[2])
 
-    body = section(version, label)
+    body, shared = section(version, label)
     if not body:
         sys.exit(
             "CHANGELOG.md has no '# StatCap %s (%s)' or '# StatCap %s' section.\n"
@@ -74,8 +75,12 @@ def main():
     # does not repeat down the file when someone reads the whole history.
     footer = ("StatCap is free and stays free. If you would like to support "
               "the work: https://ko-fi.com/adam5288")
+    # A section shared by every flavor gets a heading without the flavor, so the
+    # GitHub release - whose text the LAST publish run of a version writes - reads
+    # the same whichever flavor ran last.
+    heading = "# StatCap %s" % version if shared else "# StatCap %s (%s)" % (version, label)
     io.open(OUT, "w", encoding="utf-8", newline="\n").write(
-        "# StatCap %s (%s)\n\n%s\n\n---\n\n%s\n" % (version, label, body, footer)
+        "%s\n\n%s\n\n---\n\n%s\n" % (heading, body, footer)
     )
     print("RELEASE_NOTES.md written for %s (%s), %d characters."
           % (version, label, len(body)))

@@ -161,7 +161,7 @@ jobs:
 
       - name: Package only (dry run)
         if: ${{ inputs.publish != true }}
-        uses: BigWigsMods/packager@v2
+        uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0  # v2.6.1, the version the dry runs of 1.2.0 used; bump on purpose
         with:
           # -d = build the zip, upload nothing
           args: >-
@@ -171,7 +171,7 @@ jobs:
 
       - name: Package and publish
         if: ${{ inputs.publish == true && inputs.wago_only != true }}
-        uses: BigWigsMods/packager@v2
+        uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0  # v2.6.1, the version the dry runs of 1.2.0 used; bump on purpose
         env:
           CF_API_KEY: ${{ secrets.CORGEFORGE_API_TOKEN }}
           WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
@@ -190,7 +190,7 @@ jobs:
       # either, because the release already exists.
       - name: Publish to Wago only
         if: ${{ inputs.publish == true && inputs.wago_only == true }}
-        uses: BigWigsMods/packager@v2
+        uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0  # v2.6.1, the version the dry runs of 1.2.0 used; bump on purpose
         env:
           WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
         with:
