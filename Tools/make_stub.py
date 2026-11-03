@@ -21,6 +21,10 @@ of them per flavor in its reduce step, exactly as it keeps one StatCap TOC, and 
 
 The files are committed, not generated at package time, because the packager leaves
 out every file git does not track.
+
+Keep this folder, StatCap's "## OptionalDeps: StatCoach" and ns.TakeOverOldName in
+every release from 1.2.0 on: an account that has not run StatCap since 1.1.x still
+needs them, and the packager skips a missing move-folders source without a word.
 """
 import glob
 import io

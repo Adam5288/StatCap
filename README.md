@@ -38,7 +38,7 @@ Pawn multiplies each stat by a fixed weight. StatCap knows your **caps** and you
 
 ## Install
 
-Drop the `StatCap` folder into your client's AddOns directory:
+Unzip the whole package into your client's AddOns directory. It holds two folders, `StatCap` and `StatCoach`; copy both. If you already have a `StatCoach` folder from before the rename, let the new one overwrite it, and don't delete it before your first login with StatCap. The `StatCoach` folder runs no code: it shows in the AddOns list as "StatCap (old StatCoach settings)" and only hands your old settings to StatCap.
 
 ```
 World of Warcraft\_classic_era_\Interface\AddOns\      (Classic Era)

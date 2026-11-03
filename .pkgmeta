@@ -11,10 +11,13 @@ manual-changelog:
   filename: RELEASE_NOTES.md
   markup-type: markdown
 
-# StatCap was called StatCoach until 1.2.0. The release workflow's reduce step
-# writes a settings-only StatCoach folder (Tools/make_stub.py); it ships as its own
-# folder next to StatCap, so StatCap can read the old saved settings even after an
-# addon app has deleted the old StatCoach folder.
+# StatCap was called StatCoach until 1.2.0. The settings-only StatCoach folder is
+# written by Tools/make_stub.py and COMMITTED (the packager leaves out untracked
+# files); the release workflow checks it, and its reduce step keeps the one TOC for
+# the flavor being built. It ships as its own folder next to StatCap, so StatCap can
+# read the old saved settings even after an addon app has deleted the old folder.
+# Keep it in every release from 1.2.0 on: an account that has not run StatCap since
+# 1.1.x still needs it, and the packager skips a missing source here without a word.
 move-folders:
   StatCap/StatCoach: StatCoach
 

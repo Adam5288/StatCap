@@ -4,5 +4,6 @@
 ## Author: Adam
 ## Version: {version}
 ## LoadOnDemand: 1
+## DefaultState: disabled
 ## SavedVariables: StatCoachDB
 ## IconTexture: Interface\AddOns\StatCap\Media\logo

@@ -79,8 +79,18 @@ def build(flavor, into, quiet=False):
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             shutil.copy2(src, dst)
     untracked = git_files("--others", "--exclude-standard")
-    if untracked and not quiet:
-        print("note: untracked, so the packager would leave these out: %s" % ", ".join(untracked))
+    if not quiet:
+        # Say what was packaged: a release builds from its tag, not from this tree.
+        git = lambda *a: subprocess.run(["git", "-C", HERE] + list(a), capture_output=True, text=True).stdout.strip()
+        head, tags = git("rev-parse", "--short", "HEAD"), git("tag", "--points-at", "HEAD").split()
+        print("packaged the working tree at %s (%s)" % (head, ", ".join(tags) if tags else "HEAD is not tagged"))
+        status = subprocess.run(["git", "-C", HERE, "status", "--porcelain", "--untracked-files=no"],
+                                capture_output=True, text=True).stdout     # not stripped: "XY path"
+        changed = [l[3:] for l in status.splitlines() if l.strip()]
+        if changed:
+            print("note: changed since %s - a release ships the committed version of: %s" % (head, ", ".join(changed)))
+        if untracked:
+            print("note: untracked, so the packager would leave these out: %s" % ", ".join(untracked))
 
     env = dict(os.environ, GITHUB_ENV=os.path.join(into, "github_env.txt"))
     script = reduce_step().replace("${{ inputs.flavor }}", flavor)   # 2. the workflow's own step

@@ -43,6 +43,14 @@ on:
 permissions:
   contents: write      # the packager creates a GitHub Release when publishing
 
+# Publish runs of one tag wait for each other. The packager creates the GitHub
+# release on the first run and merges release.json on the later ones; two runs at
+# once can fail at that step after CurseForge and Wago already took the file.
+# Dry runs touch no release, so each gets a group of its own.
+concurrency:
+  group: ${{ inputs.publish && format('publish-{0}', inputs.tag) || github.run_id }}
+  cancel-in-progress: false
+
 env:
   # Both stores identify the project by id. They live here rather than in the
   # TOC files so there is one place to correct them, not two. Both were read off

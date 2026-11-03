@@ -9,9 +9,9 @@
 
 ## StatCoach is now StatCap
 
-Same addon, new name. Your settings come along the first time you log in. The entry
-"StatCap (old StatCoach settings)" in your AddOns list only holds those old settings and
-runs no code. /statcap, /stc and /statcoach all open and close the window.
+Same addon, new name. Your settings come along the first time you log in. Leave the entry
+"StatCap (old StatCoach settings)" in your AddOns list installed: it brings your old
+settings over and runs no code. /statcap, /stc and /statcoach all open and close the window.
 
 ---
 

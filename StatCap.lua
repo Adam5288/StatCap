@@ -5468,25 +5468,32 @@ end
 -- its table is copied the same way, and it is quieted for this session.
 -- Switching off uses no character argument (as Blizzard's AddOnUtil and WeakAuras
 -- do): the whole account on retail, the realm being played on the Classic clients.
+-- Keep the folder, OptionalDeps and this function in every release from 1.2.0 on:
+-- an account that has not run StatCap since 1.1.x still needs them.
 -- A field on ns, not a local: the main chunk sits at Lua's 200-locals limit.
 ------------------------------------------------------------------------
 ns.TakeOverOldName = function()
   local api = C_AddOns or {}
+  local function call(fn, ...) if fn then return pcall(fn, ...) end return false end
+  local function oldCode() return type(SlashCmdList) == "table" and SlashCmdList.STATCOACH ~= nil end
   -- Only the old full addon defines the STATCOACH slash command; the settings-only
-  -- folder has no code. Read before anything below reroutes it.
-  local oldRuns = type(SlashCmdList) == "table" and SlashCmdList.STATCOACH ~= nil
-  local firstRun = StatCapDB == nil
-  local carried = false
+  -- folder has no code. Read before anything below reroutes it, and again after a load.
+  local oldRuns = oldCode()
+  -- One more try is owed after a reload when an old full copy was installed but did
+  -- not load (see below). Cleared here, so it is exactly one.
+  local retry = type(StatCapDB) == "table" and StatCapDB.awaitStatCoach == true
+  if retry then StatCapDB.awaitStatCoach = nil end
+  local firstRun = StatCapDB == nil or retry
+  local carried, await = false, false
   if firstRun then
     if type(StatCoachDB) ~= "table" then
       -- Switched on first: the old StatCoach may have been off for this character,
       -- and LoadAddOn refuses an addon that is off. Missing folder = nothing loads.
-      local enable = api.EnableAddOn or EnableAddOn
-      local load = api.LoadAddOn or LoadAddOn
-      if enable then pcall(enable, "StatCoach") end
-      if load then pcall(load, "StatCoach") end
+      call(api.EnableAddOn or EnableAddOn, "StatCoach")
+      call(api.LoadAddOn or LoadAddOn, "StatCoach")
+      if oldCode() then oldRuns = true end   -- the load ran an old full copy
     end
-    if type(StatCoachDB) == "table" then
+    if type(StatCoachDB) == "table" and not StatCoachDB.movedToStatCap then
       local function copy(v, seen)
         if type(v) ~= "table" then return v end
         if seen[v] then return seen[v] end
@@ -5497,14 +5504,41 @@ ns.TakeOverOldName = function()
       end
       StatCapDB = copy(StatCoachDB, {})
       StatCapDB.fromStatCoach = true
+      -- Marked in the OLD table, which the client writes back at logout: a player who
+      -- resets StatCap by deleting its saved file must not get the old settings again.
+      StatCoachDB.movedToStatCap = true
       carried = true
+    elseif type(StatCoachDB) ~= "table" and not retry and api.DoesAddOnExist and api.IsAddOnLoadOnDemand and api.IsAddOnLoadable then
+      -- An old FULL StatCoach folder is installed (a hand install that kept it) but did
+      -- not load: it was off for this character, or the client would not load it now.
+      -- It stays on, so it loads first after a reload (OptionalDeps) and its table is
+      -- read then - unless the client would not load it at all (out of date).
+      local okE, exists = call(api.DoesAddOnExist, "StatCoach")
+      local okD, onDemand = call(api.IsAddOnLoadOnDemand, "StatCoach")
+      local okL, loadable = call(api.IsAddOnLoadable, "StatCoach", UnitName and UnitName("player") or nil)
+      if okE and exists and okD and not onDemand and okL and loadable then
+        StatCapDB = StatCapDB or {}
+        StatCapDB.awaitStatCoach = true
+        await = true
+      end
     end
   end
-  if firstRun or oldRuns then
-    -- Off from the next load for every character in the client's list: the old code
-    -- must not run again, and the settings folder has done its job.
-    local disable = api.DisableAddOn or DisableAddOn
-    if disable then pcall(disable, "StatCoach") end
+  local disable, save = api.DisableAddOn or DisableAddOn, api.SaveAddOns or SaveAddOns
+  if (firstRun or oldRuns) and not await then
+    -- Off from the next load for every character in the client's list, and saved at
+    -- once: the game's AddOns list undoes unsaved switches when it is closed without OK.
+    call(disable, "StatCoach")
+    call(save)
+  elseif await then
+    call(save)   -- keeps the switch-on above, so the old copy loads after the reload
+  elseif not firstRun and not oldRuns and api.GetAddOnEnableState then
+    -- Later logins: a character made since, or another realm on a Classic client, can
+    -- still have the folder on. C_AddOns only: the old global takes (character, name).
+    local ok, state = call(api.GetAddOnEnableState, "StatCoach")
+    if ok and type(state) == "number" and state > 0 then
+      call(disable, "StatCoach")
+      call(save)
+    end
   end
   if oldRuns then
     -- Until the reload both copies run. Quiet the old one for this session: its
@@ -5521,12 +5555,13 @@ ns.TakeOverOldName = function()
       if icon.RemoveButtonFromCompartment then pcall(icon.RemoveButtonFromCompartment, icon, "StatCoach") end
     end
   end
-  if carried or oldRuns then
+  if carried or oldRuns or await then
     print("|cffffd100StatCap:|r StatCoach is now called StatCap."
       .. (carried and " Your settings came along." or "")
-      .. (oldRuns and " Type /reload to finish the switch." or ""))
+      .. (await and " Type /reload to bring your settings along."
+          or oldRuns and " Type /reload to finish the switch." or ""))
   end
-  ns.oldName = { carried = carried, oldRan = oldRuns, firstRun = firstRun }   -- read by /stc dump
+  ns.oldName = { carried = carried, oldRan = oldRuns, firstRun = firstRun, await = await }   -- read by /stc dump
 end
 
 ------------------------------------------------------------------------
