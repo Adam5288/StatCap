@@ -5,7 +5,7 @@
 
 # StatCap 1.2.0
 
-*3 November 2026*
+*4 November 2026*
 
 ## StatCoach is now StatCap
 
