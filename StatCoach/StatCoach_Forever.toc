@@ -2,7 +2,7 @@
 ## Title: StatCap (old StatCoach settings)
 ## Notes: Holds the settings from before StatCoach was renamed StatCap. StatCap reads them once; this folder runs no code.
 ## Author: Adam
-## Version: 1.2.0
+## Version: 1.2.1
 ## LoadOnDemand: 1
 ## DefaultState: disabled
 ## SavedVariables: StatCoachDB

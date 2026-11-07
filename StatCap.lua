@@ -1375,13 +1375,56 @@ local function shownPct(r)
   return r.pct, false
 end
 
+-- The two steps of the upgrade ladder - BIG (the skull) and strong (amber) - and the
+-- floors, in the units the percent is measured in. Everywhere but Forever that is the
+-- item in the slot: BIG from 25%, strong from 10%.
+--
+-- Forever measures the gain against the whole character instead (ns.ForeverEvalItem), so
+-- one item moves the number far less, and its steps are set for that scale on purpose:
+--   BIG from 5%: the item alone adds a twentieth of everything the list values - about
+--     what one average slot carries on a fully geared character. A staff with +3 Intellect
+--     and +2 Stamina over a plain one is 5.6% for a level-8 mage.
+--   strong from 2%: a clear step, still one of many. A robe with +2 Intellect and +1
+--     Spirit over a plain one is 4.1% for that mage, a cloak with +1 Intellect 1.7%.
+--   a line from above 0.5%: below it the gain is inside the scoring's own coarseness (two
+--     stats one rank apart on the list), so it stays quiet - six armor on that mage is
+--     0.05%, Black Wolf Bracers over Bandsaw Wristbands for a level-21 tank under 0.5%.
+-- The worn gear in these examples is real (Oct and Nov 2026) and the numbers are the
+-- engine's own; the steps are not taken from a log of play.
+-- floors: the four choices of "Flag upgrades above", by the value the menu saves, so a
+-- choice made on the old scale keeps its place on this one.
+ns.FV = { big = 5, strong = 2, notice = 0.5, floors = { [1] = 0.5, [5] = 1, [10] = 2, [25] = 5 } }
+function ns.UpgradeSteps()
+  if FOREVER then return ns.FV.big, ns.FV.strong end
+  return 25, 10
+end
+
 -- How small an upgrade is still worth mentioning. Presentation only: the score
 -- is unchanged, this is just how low StatCap will open its mouth. Someone in
 -- raid gear wants 10%+ and nothing else; someone levelling wants every scrap.
 -- Same reason as shownPct for living in one place - the badge and the tooltip
 -- must agree on what counts, or an item gets a badge and no verdict.
 local function badgeFloor()
-  return (StatCapDB and StatCapDB.minUpgrade) or 1
+  local choice = (StatCapDB and StatCapDB.minUpgrade) or 1
+  if FOREVER then return ns.FV.floors[choice] or ns.FV.notice end
+  return choice
+end
+
+-- Whether an upgrade of p clears the player's floor. On Forever a floor never hides a
+-- skull: that percent is rounded to a tenth, so an item can land exactly on the BIG step,
+-- and "big upgrades only" must still show it.
+function ns.ClearsFloor(p)
+  if p > badgeFloor() then return true end
+  return FOREVER and p >= ns.FV.big or false
+end
+
+-- An empty slot: anything worth a line fills it, and BIG says so - one point of score, as
+-- always. On Forever also any gain that would get a line over a worn item, so an empty
+-- slot never reads quieter than a junk one: a cloak with +1 Intellect is 1.7% of a level-8
+-- mage, a fraction of one point. A ring with one Stamina (0.3%) still gets nothing.
+function ns.EmptyWorthIt(r)
+  if (r.delta or 0) > 1 then return true end
+  return r.share ~= nil and r.share > ns.FV.notice
 end
 
 -- Upgrade % for a bag item vs equipped (nil if not an upgrade); cached per link
@@ -1392,11 +1435,10 @@ local function bagUpgradePct(link)
   if c == nil then
     local r = evalItem(link)
     local p = shownPct(r)
-    -- pct == nil with a positive delta means the slot is EMPTY -> big upgrade
-    local floor = badgeFloor()
+    -- pct == nil with a positive gain means the slot is EMPTY -> big upgrade
     -- our badges mark YOUR build's gear; another spec's weapon gets only its
     -- tooltip line, never a glowing icon in your bags
-    local up = r and not r.offspec and ((p and p > floor) or (p == nil and (r.delta or 0) > 1))
+    local up = r and not r.offspec and ((p and ns.ClearsFloor(p)) or (p == nil and ns.EmptyWorthIt(r)))
     c = up and (p or 100) or false
     bagCache[link] = c
   end
@@ -1405,8 +1447,9 @@ end
 
 -- Verdict label + colours (hex for panel, r,g,b for tooltip)
 -- Only surface UPGRADES; downgrades / sidegrades / non-comparable show nothing (nil)
--- Colour scale: green arrow = solid upgrade, gold arrow = strong (10%+),
--- PURPLE SKULL = BIG upgrade (25%+ / empty slot) - it kills your old item.
+-- Colour scale: green arrow = solid upgrade, gold arrow = strong (10%+; Forever 2%+),
+-- PURPLE SKULL = BIG upgrade (25%+; Forever 5%+; or an empty slot) - it kills your old
+-- item. The steps live in ns.UpgradeSteps, shared with the badge.
 local function verdictOf(r)
   -- Icon size is configurable (/stc icon N, default 14); the skull stays 2px bigger.
   local sz = (StatCapDB and StatCapDB.iconSize) or 14
@@ -1447,7 +1490,7 @@ local function verdictOf(r)
   local p, assumesGems = shownPct(r)
   local gem = assumesGems and "   |cff8d8279(once gemmed)|r" or ""
   if p == nil then
-    if r.delta and r.delta > 1 then
+    if ns.EmptyWorthIt(r) then
       return order(UP_SKULL, "BIG UPGRADE  (empty slot)"), "bf5aff", 0.75, 0.35, 1
     end
     return nil
@@ -1455,20 +1498,25 @@ local function verdictOf(r)
   -- The floor comes BEFORE the tiers, not after: a 15% item reaches the gold
   -- branch and returns from there, so a floor checked further down would never
   -- see it and "only tell me about 25%+" would silently do nothing.
-  if p <= badgeFloor() then return nil end
-  if p >= 25 then
-    return order(UP_SKULL, string.format("BIG UPGRADE  (+%d%%)", math.min(math.floor(p + 0.5), 999)) .. gem), "bf5aff", 0.75, 0.35, 1
+  if not ns.ClearsFloor(p) then return nil end
+  local big, strong = ns.UpgradeSteps()
+  -- Forever's percent is of the whole character, so the line says so, to a tenth:
+  -- "+1.7% overall". Everywhere else it is the slot's, in whole percents.
+  local num = r.share and string.format("+%.1f%% overall", math.min(p, 999))
+    or string.format("+%d%%", math.min(math.floor(p + 0.5), 999))
+  if p >= big then
+    return order(UP_SKULL, "BIG UPGRADE  (" .. num .. ")" .. gem), "bf5aff", 0.75, 0.35, 1
   end
   -- Amber, not Blizzard's own gold (ffd100): the strong tier must not wear the
   -- same colour as every highlighted line the client itself draws.
-  if p >= 10 then
-    return order(UP_PLUS, string.format("UPGRADE  (+%d%%)", math.floor(p + 0.5)) .. gem), "ffb020", 1, 0.69, 0.13
+  if p >= strong then
+    return order(UP_PLUS, "UPGRADE  (" .. num .. ")" .. gem), "ffb020", 1, 0.69, 0.13
   end
   -- No condition left to test: the floor above already sent everything smaller
   -- home, so anything still here is an upgrade worth naming.
   -- Mint, not equip-green (00ff00): the solid tier drowned between the
   -- client's own "Equip:" lines in exactly the colour we used to borrow.
-  return order(UP_PLUS, string.format("UPGRADE  (+%d%%)", math.floor(p + 0.5)) .. gem), "40ff9a", 0.25, 1, 0.6
+  return order(UP_PLUS, "UPGRADE  (" .. num .. ")" .. gem), "40ff9a", 0.25, 1, 0.6
 end
 
 -- Add our verdict to any item tooltip so the player notices without opening the panel.
@@ -3011,10 +3059,16 @@ do
     return out
   end
 
-  ns.ForeverItemScore = function(link, sd, equipLoc)
+  local function listWeights(sd)
     local w = {}
     for i, st in ipairs(sd.stats or {}) do w[st] = math.max(0.25, 1 - (i - 1) * 0.15) end
-    local s = ns.ForeverItemStats(link)
+    return w
+  end
+
+  -- s: the item's stats, when the caller has read them already
+  ns.ForeverItemScore = function(link, sd, equipLoc, s)
+    local w = listWeights(sd)
+    s = s or ns.ForeverItemStats(link)
     local score = 0
     for name, v in pairs(s) do
       if BUDGET[name] then score = score + v * BUDGET[name] * (w[name] or 0.1) end
@@ -3025,6 +3079,50 @@ do
     local ranged = sd.attack == "ranged" and RANGED_WEAPONS[loc]
     if s.dps and (melee or ranged) then score = score + s.dps * DPS_BUDGET end
     return score
+  end
+
+  -- The whole character, in the points an item scores: everything it wears, plus the five
+  -- base stats it has without that gear (the character sheet minus what the worn items
+  -- give; enchants and buffs stay on the character's side). Gear alone is no measure: a
+  -- level-8 mage in greys and whites (dumped 6 Nov 2026) wore 36 armor and not one other
+  -- stat, so six armor more was 17% of the gear - and 0.05% of the character.
+  -- Counted again only when something it is made of changes: a worn item, a stat, the list.
+  local PRIMARY = { "Strength", "Agility", "Stamina", "Intellect", "Spirit" }   -- UnitStat's order
+  ns.ForeverCharTotal = function(sd)
+    local key = { table.concat(sd.stats or {}, ","), sd.attack or "" }
+    for slot = 1, 18 do key[#key + 1] = GetInventoryItemLink("player", slot) or "" end
+    -- In combat the game hides the character sheet (UnitStat turns secret): keep the last
+    -- sheet read, and before there is one say nothing. A hidden sheet counted as zero would
+    -- shrink the character to its gear and inflate every percent again - six armor read
+    -- +16.7% mid-fight - and the bag badges would keep that after the fight.
+    local eff = {}
+    for i = 1, 5 do
+      local _, v = safe(UnitStat, "player", i)
+      v = tonumber(desecret(v)) or (ns.fvEff and ns.fvEff[i])
+      if v == nil then return nil end
+      eff[i] = v
+      key[#key + 1] = v
+    end
+    ns.fvEff = eff
+    key = table.concat(key, ";")
+    local c = ns.fvTotal
+    if c and c.key == key then return c.total, c.gear, c.own end
+    local w = listWeights(sd)
+    local gear, worn = 0, {}
+    for slot = 1, 18 do
+      local link = slot ~= 4 and GetInventoryItemLink("player", slot)   -- not the shirt
+      if link then
+        local s = ns.ForeverItemStats(link)
+        gear = gear + ns.ForeverItemScore(link, sd, nil, s)
+        for _, stat in ipairs(PRIMARY) do worn[stat] = (worn[stat] or 0) + (s[stat] or 0) end
+      end
+    end
+    local own = 0
+    for i, stat in ipairs(PRIMARY) do
+      own = own + math.max(0, eff[i] - (worn[stat] or 0)) * BUDGET[stat] * (w[stat] or 0.1)
+    end
+    ns.fvTotal = { key = key, total = gear + own, gear = gear, own = own }
+    return gear + own, gear, own
   end
 
   -- Which equipped slots a new item competes with, and whether their scores add up
@@ -3068,16 +3166,30 @@ do
     end
     local name = GetItemInfo(link) or (link:match("%[(.-)%]")) or "item"
     local itemScore = ns.ForeverItemScore(link, sd, equipLoc)
-    local eqScore
+    -- What it competes with: both hands together, or the weaker of two slots. Of two that
+    -- score the same, an empty one wins: the new ring goes there and nothing is given up.
+    -- "empty" means no item at all - a staff that scores nothing for a caster is still worn.
+    local eqScore, empty
     for _, slot in ipairs(list) do
       local eqLink = GetInventoryItemLink("player", slot)
       local sc = eqLink and ns.ForeverItemScore(eqLink, sd) or 0   -- an empty slot scores 0
-      if combined then eqScore = (eqScore or 0) + sc
-      elseif not eqScore or sc < eqScore then eqScore = sc end
+      if combined then
+        eqScore, empty = (eqScore or 0) + sc, empty ~= false and not eqLink
+      elseif not eqScore or sc < eqScore or (sc == eqScore and not eqLink) then
+        eqScore, empty = sc, not eqLink
+      end
     end
-    local eq = eqScore or 0
-    local delta = itemScore - eq
-    return { name = name, delta = delta, pct = (eq > 0) and (delta / eq * 100) or nil }
+    local delta = itemScore - (eqScore or 0)
+    -- How much stronger the item makes the character: the gain as a share of everything the
+    -- character has (ns.ForeverCharTotal), not of the item it replaces. Measured against the
+    -- old item, a weak slot inflated everything: six armor over a pair of five-armor shoes
+    -- read +120% and a skull for a mage they make 0.05% stronger.
+    -- Rounded to a tenth here, once: the tooltip line, the badge and their steps all read
+    -- this one number, so a printed 5.0 can never land in a different step than another 5.0.
+    local total = ns.ForeverCharTotal(sd)
+    if not total or total <= 0 then return nil end
+    local share = math.floor(delta / total * 1000 + 0.5) / 10
+    return { name = name, delta = delta, share = share, pct = (not empty) and share or nil }
   end
 end
 
@@ -4454,7 +4566,14 @@ end
 -- nothing without being told to, is the whole point of the addon. Pawn already
 -- exists for people who want to tune weights, and a StatCap whose numbers you
 -- can break is just a worse Pawn.
-local UPGRADE_FLOORS = {
+-- The first value of each choice is what the menu saves. Forever shows the same four
+-- choices on its own scale (ns.FV.floors), so a saved choice keeps its place there.
+local UPGRADE_FLOORS = FOREVER and {
+  { 1,  "anything (" .. ns.FV.floors[1] .. "%)" },
+  { 5,  ns.FV.floors[5] .. "%" },
+  { 10, ns.FV.floors[10] .. "%" },
+  { 25, "big upgrades only (" .. ns.FV.floors[25] .. "%)" },
+} or {
   { 1,  "anything (1%)" },
   { 5,  "5%" },
   { 10, "10%" },
@@ -4630,7 +4749,7 @@ local MM_NAME = "StatCap"
 
 local mmObject = LDB and LDB:NewDataObject(MM_NAME, {
   type = "launcher",
-  icon = "Interface\\Icons\\Ability_Warrior_BattleShout",
+  icon = "Interface\\AddOns\\StatCap\\Media\\logo",   -- the logo the AddOns list shows (every TOC's IconTexture)
   OnClick = function(self, button)
     if button == "RightButton" then ShowSettingsMenu(self)
     elseif UI.frame and UI.frame:IsShown() then UI.hideAll()
@@ -4726,9 +4845,10 @@ local function CreateGlowBadge(parent, surface)
   return holder
 end
 
--- Same tiers and colours as the tooltip verdict: green + (solid), gold + (10%+),
--- purple skull (25%+ / empty slot). The skull texture is height 0 = follows the
--- font size, so everything scales together via /stc badge N.
+-- Same tiers and colours as the tooltip verdict: green + (solid), gold + (10%+;
+-- Forever 2%+), purple skull (25%+; Forever 5%+; or an empty slot), from the same
+-- ns.UpgradeSteps. The skull texture is height 0 = follows the font size, so
+-- everything scales together via /stc badge N.
 ApplyGlowBadge = function(holder, pct, tier)
   local size = (StatCapDB and StatCapDB.badgeSize) or 18
   if holder.scSize ~= size then
@@ -4740,6 +4860,7 @@ ApplyGlowBadge = function(holder, pct, tier)
     holder.scSize = size
   end
   local r, g, b
+  local big, strong = ns.UpgradeSteps()
   -- tier comes from GearCoach at vendors: the skull is "this IS the goal" and
   -- the gold + is "the road there", regardless of how big the raw upgrade is.
   -- "green" caps an ordinary upgrade at the green + so the vendor never shows
@@ -4747,8 +4868,8 @@ ApplyGlowBadge = function(holder, pct, tier)
   if tier == "bis" then holder.text:SetText(BADGE_SKULL); r, g, b = 0.75, 0.35, 1
   elseif tier == "budget" then holder.text:SetText("+"); r, g, b = 1, 0.82, 0
   elseif tier == "green" then holder.text:SetText("+"); r, g, b = 0.3, 1, 0.3
-  elseif pct >= 25 then holder.text:SetText(BADGE_SKULL); r, g, b = 0.75, 0.35, 1
-  elseif pct >= 10 then holder.text:SetText("+"); r, g, b = 1, 0.82, 0
+  elseif pct >= big then holder.text:SetText(BADGE_SKULL); r, g, b = 0.75, 0.35, 1
+  elseif pct >= strong then holder.text:SetText("+"); r, g, b = 1, 0.82, 0
   else holder.text:SetText("+"); r, g, b = 0.3, 1, 0.3 end
   holder.text:SetTextColor(r, g, b)
   holder.glow:SetVertexColor(r, g, b, 0.9)
@@ -5812,14 +5933,20 @@ local function DumpPanel()
     local scores = {}
     for _, it in ipairs(items) do
       local r = ns.ForeverEvalItem(it.link)
-      if r then scores[#scores + 1] = string.format("%s: delta %.1f pct %s", r.name, r.delta, r.pct and string.format("%.1f", r.pct) or "empty slot") end
+      if r then
+        scores[#scores + 1] = string.format("%s: delta %.2f, %.1f%% overall%s", r.name, r.delta, r.share,
+          r.pct and "" or " (empty slot)")
+      end
     end
+    -- what the percents are a share of: the character, split into worn gear and own stats
+    local total, gearPart, ownPart
+    if ns.fvSd then total, gearPart, ownPart = ns.ForeverCharTotal(ns.fvSd) end
     d.raw = { interface = select(4, GetBuildInfo()), project = WOW_PROJECT_ID,
               getItemStats = getStats and "present" or "absent", items = items,
               talents = { configID = t.configID, treeID = t.treeID, nodes = t.nodes, missing = t.missing,
                           pts = t.pts, unmatched = t.unmatched, bought = t.talents,
                           pick = (pc or "?") .. " / " .. (ps or "none"), detected = detected },
-              verdicts = scores }
+              verdicts = scores, character = total and { total = total, gear = gearPart, own = ownPart } or nil }
   end
   d.oldName = ns.oldName
   StatCapDB.panelDump = d

@@ -3,6 +3,22 @@
 
 ---
 
+# StatCap 1.2.1 (Forever)
+
+*7 November 2026*
+
+## Upgrades are measured against your whole character
+
+The percent on an upgrade is now how much stronger the item makes you overall - your own
+stats and everything you wear, weighed by your tree's stat order - and the line says so:
+"UPGRADE (+1.7% overall)". Against an item you already wear, BIG UPGRADE starts at 5%, the
+amber step at 2%, and a gain under half a percent stays quiet, so a big upgrade means a big
+gain for you, whichever slot it is in. An empty slot still reads "BIG UPGRADE (empty slot)"
+for anything worth wearing there. "Flag upgrades above" offers the same four choices on
+this scale.
+
+---
+
 # StatCap 1.2.0
 
 *4 November 2026*
