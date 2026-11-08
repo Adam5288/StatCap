@@ -2871,22 +2871,87 @@ local FOREVER_CRIT_PER_SKILL = 0.04
 
 -- Forever's spec and item verdicts. Forever has ONE specialization per class (named after
 -- the class) and keeps the three classic talent trees inside one trait tree, so the game
--- cannot be asked which tree you play: StatCap adds up the ranks you bought per tree, by
--- talent name (StatCapData_Forever.lua). The stat list for that tree is Era's (Wowhead
+-- cannot be asked which tree you play: StatCap reads the points spent in each tree off the
+-- talent window's three tree headings, and adds up the ranks you bought per tree by talent
+-- name (StatCapData_Forever.lua) only on a client without them. The stat list for that tree
+-- is Era's (Wowhead
 -- Classic) until Forever's own level-60 guides exist, with Forever's own guide where Classic
 -- has none. Everything lives on ns: this file sits at Lua's limit of 200 locals per chunk.
 do
   local function isSecretValue(v) return issecretvalue ~= nil and issecretvalue(v) and true or false end
-  -- Ranks bought per tree. detail = also list every talent with ranks, for /stc dump.
-  -- Cached until the talents change (the event handler clears ns.foreverTalents).
+  -- The points spent in each of the three trees, the way Forever's own talent window shows them
+  -- in its tree headings (Blizzard_ClassTalentsFrame on Forever): one trait group per classic
+  -- tree from C_Traits.GetGroupDisplayInfoByTreeID, laid out left to right in the order it
+  -- returns them, and each group's spent count from C_Traits.GetGroupCurrencyInfo. No talent name
+  -- in it, so it reads the same in every client language and is right for a talent the name list
+  -- has not caught up with. Where all three headings name a tree the way Era does (an English
+  -- client), each group goes to the tree its heading names; otherwise the window's order, which
+  -- is Era's. A tree the currency answer leaves out (nothing spent in it: the window shows 0) or
+  -- answers without a currency counts as 0. Nil when the client offers no such data or the
+  -- currency call fails, so the names decide. The second return is what the client answered, for
+  -- /stc dump: each group's id, order, skill line, heading, tree and spent count.
+  ns.ForeverGroupPoints = function(TR, configID, treeID, class)
+    if not (TR and TR.GetGroupDisplayInfoByTreeID and TR.GetGroupCurrencyInfo and treeID) then return nil end
+    local infos = safe(TR.GetGroupDisplayInfoByTreeID, treeID)
+    if type(infos) ~= "table" then return nil end
+    local ids, raw = {}, {}
+    for i, d in ipairs(infos) do
+      local id = type(d) == "table" and tonumber(desecret(d.groupID)) or nil
+      local name = type(d) == "table" and d.displayName or nil
+      if isSecretValue(name) or type(name) ~= "string" or name == "" then name = nil end
+      raw[i] = { groupID = id, order = type(d) == "table" and desecret(d.orderIndex) or nil,
+                 skill = type(d) == "table" and desecret(d.skillLineID) or nil, name = name }
+      if not id then return nil, raw end
+      ids[i] = id
+    end
+    if #ids ~= 3 then return nil, raw end
+    local tree = { 1, 2, 3 }
+    local cd = D.era and D.era.classes and D.era.classes[class or ""]
+    if cd and type(cd.tabSpec) == "table" then
+      local byName, taken = {}, {}
+      for i = 1, 3 do
+        local word = raw[i].name and raw[i].name:match("^(%a+)")
+        for t = 1, 3 do
+          local era = type(cd.tabSpec[t]) == "string" and cd.tabSpec[t]:match("^(%a+)")
+          if word and era == word and not taken[t] then byName[i], taken[t] = t, true; break end
+        end
+      end
+      if byName[1] and byName[2] and byName[3] then tree = byName end
+    end
+    local cur = safe(TR.GetGroupCurrencyInfo, configID, ids)
+    if type(cur) ~= "table" then return nil, raw end
+    local pts = { 0, 0, 0 }
+    for i = 1, 3 do
+      raw[i].tree, raw[i].spent = tree[i], "none"
+      for _, gi in ipairs(cur) do
+        if type(gi) == "table" and tonumber(desecret(gi.traitNodeGroupID)) == ids[i] then
+          local c = type(gi.currencyInfos) == "table" and gi.currencyInfos[1]
+          if type(c) == "table" then
+            pts[tree[i]] = tonumber(desecret(c.spent)) or 0
+            raw[i].spent = pts[tree[i]]
+          else
+            raw[i].spent = "no currency"
+          end
+          break
+        end
+      end
+    end
+    return pts, raw
+  end
+
+  -- Ranks bought per tree. The trees' own spent counts decide (ns.ForeverGroupPoints above);
+  -- the talent names (D.forever.talentTree) decide only on a client that offers no such counts,
+  -- and are always read too, so /stc dump shows both readings side by side.
+  -- detail = also list every talent with ranks, for /stc dump.
+  -- Cached until the talents change (the event handler clears ns.foreverTalents). A reading made
+  -- before the talent tree is there to read is not kept: the next look tries again.
   ns.ForeverTalentPoints = function(detail)
     if ns.foreverTalents and not detail then return ns.foreverTalents end
-    local out = { pts = { 0, 0, 0 }, unmatched = {}, nodes = 0 }
+    local out = { pts = { 0, 0, 0 }, byName = { 0, 0, 0 }, unmatched = {}, nodes = 0, source = "none" }
     local _, class = UnitClass("player")
     local map = D.forever and D.forever.talentTree and D.forever.talentTree[class or ""]
     local CT, TR = C_ClassTalents, C_Traits
-    if not (map and CT and TR and CT.GetActiveConfigID and TR.GetConfigInfo and TR.GetTreeNodes
-            and TR.GetNodeInfo and TR.GetEntryInfo and TR.GetDefinitionInfo) then
+    if not (CT and TR and CT.GetActiveConfigID and TR.GetConfigInfo and TR.GetTreeNodes) then
       out.missing = true
       ns.foreverTalents = out
       return out
@@ -2896,9 +2961,11 @@ do
     local treeID = type(cfg) == "table" and type(cfg.treeIDs) == "table" and cfg.treeIDs[1] or nil
     local nodes = treeID and safe(TR.GetTreeNodes, treeID)
     out.configID, out.treeID = configID, treeID
+    if not map then out.noNames = true end
     if detail then out.talents = {} end
     local spellName = (C_Spell and C_Spell.GetSpellName) or GetSpellInfo
-    for _, nodeID in ipairs(type(nodes) == "table" and nodes or {}) do
+    local readNodes = TR.GetNodeInfo and TR.GetEntryInfo and TR.GetDefinitionInfo
+    for _, nodeID in ipairs(readNodes and type(nodes) == "table" and nodes or {}) do
       local node = safe(TR.GetNodeInfo, configID, nodeID)
       if type(node) == "table" then
         out.nodes = out.nodes + 1
@@ -2913,8 +2980,8 @@ do
           if (type(name) ~= "string" or name == "") and def.spellID and spellName then name = safe(spellName, def.spellID) end
         end
         if isSecretValue(name) or type(name) ~= "string" or name == "" then name = nil end
-        local tree = name and map[name]
-        if tree then out.pts[tree] = out.pts[tree] + ranks
+        local tree = name and map and map[name]
+        if tree then out.byName[tree] = out.byName[tree] + ranks
         elseif name and #out.unmatched < 60 then out.unmatched[#out.unmatched + 1] = name end
         if detail and ranks > 0 then
           out.talents[#out.talents + 1] = string.format("%s %d/%s tree %s", name or ("node " .. tostring(nodeID)),
@@ -2922,7 +2989,9 @@ do
         end
       end
     end
-    if not detail then ns.foreverTalents = out end
+    out.byGroup, out.groups = ns.ForeverGroupPoints(TR, configID, treeID, class)
+    if out.byGroup then out.pts, out.source = out.byGroup, "groups" else out.pts, out.source = out.byName, "names" end
+    if not detail and treeID and type(nodes) == "table" then ns.foreverTalents = out end
     return out
   end
 
@@ -5705,6 +5774,7 @@ if FOREVER then
   pcall(ev.RegisterEvent, ev, "UPDATE_SHAPESHIFT_FORM")   -- a druid's line follows Bear and Cat Form
   pcall(ev.RegisterEvent, ev, "TRAIT_CONFIG_UPDATED")     -- the talent points decide the tree
   pcall(ev.RegisterEvent, ev, "PLAYER_TALENT_UPDATE")
+  pcall(ev.RegisterEvent, ev, "TRAIT_TREE_CURRENCY_INFO_UPDATED")   -- the trees' spent counts
 end
 if ns.ERA then
   pcall(ev.RegisterEvent, ev, "SKILL_LINES_CHANGED")
@@ -5944,7 +6014,8 @@ local function DumpPanel()
     d.raw = { interface = select(4, GetBuildInfo()), project = WOW_PROJECT_ID,
               getItemStats = getStats and "present" or "absent", items = items,
               talents = { configID = t.configID, treeID = t.treeID, nodes = t.nodes, missing = t.missing,
-                          pts = t.pts, unmatched = t.unmatched, bought = t.talents,
+                          pts = t.pts, source = t.source, byGroup = t.byGroup, byName = t.byName,
+                          groups = t.groups, noNames = t.noNames, unmatched = t.unmatched, bought = t.talents,
                           pick = (pc or "?") .. " / " .. (ps or "none"), detected = detected },
               verdicts = scores, character = total and { total = total, gear = gearPart, own = ownPart } or nil }
   end
