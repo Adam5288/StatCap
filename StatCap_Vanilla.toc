@@ -2,7 +2,7 @@
 ## Title: StatCap
 ## Notes: Hit caps from your weapon skill, weapon skill itself, and your talent tree's stat priority, for Classic Era
 ## Author: Adam
-## Version: 1.2.0
+## Version: 1.2.3
 ## SavedVariables: StatCapDB
 ## OptionalDeps: StatCoach
 ## IconTexture: Interface\AddOns\StatCap\Media\logo

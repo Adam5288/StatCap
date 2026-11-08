@@ -2278,10 +2278,10 @@ local function RefreshNotes(spec)
   local parts = UI.infoParts or {}
   local text = (#parts > 0) and table.concat(parts, "\n\n") or "No notes for this context."
   -- Coach-series line (flavor-matched: TBC promotes TBC, retail promotes retail).
-  -- Forever, Mists and Era get none: neither addon does anything on those clients.
+  -- Forever, Mists and Era get none.
   local partner
   if not (FOREVER or MISTS or ns.ERA) then
-    partner = RETAIL and "TrinketCoach - trinket tiers right on your tooltips."
+    partner = RETAIL and "BiSCoach - best in slot and trinket tiers right on your tooltips."
       or "GearCoach - BiS checklists and where to get them."
   end
   if partner then text = text .. "\n\n|cff888888Goes hand in hand with " .. partner .. "|r" end

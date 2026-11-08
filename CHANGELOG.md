@@ -3,6 +3,18 @@
 
 ---
 
+# StatCap 1.2.3
+
+*8 November 2026*
+
+## StatCoach is now StatCap
+
+Same addon, new name. Your settings come along the first time you log in. Leave the entry
+"StatCap (old StatCoach settings)" in your AddOns list installed: it brings your old
+settings over and runs no code. /statcap, /stc and /statcoach all open and close the window.
+
+---
+
 # StatCap 1.2.2 (Forever)
 
 *8 November 2026*

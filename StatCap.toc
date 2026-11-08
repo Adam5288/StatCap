@@ -2,7 +2,7 @@
 ## Title: StatCap
 ## Notes: Live stat priority, cap coach and cap-aware gear compare for TBC (all classes)
 ## Author: Adam
-## Version: 1.2.0
+## Version: 1.2.3
 ## SavedVariables: StatCapDB
 ## OptionalDeps: StatCoach
 ## IconTexture: Interface\AddOns\StatCap\Media\logo
