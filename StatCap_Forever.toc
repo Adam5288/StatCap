@@ -2,7 +2,7 @@
 ## Title: StatCap
 ## Notes: Your talent tree's stat order, upgrade lines on items, weapon skill and Defense for World of Warcraft: Forever
 ## Author: Adam
-## Version: 1.2.1
+## Version: 1.2.2
 ## SavedVariables: StatCapDB
 ## OptionalDeps: StatCoach
 ## IconTexture: Interface\AddOns\StatCap\Media\logo
