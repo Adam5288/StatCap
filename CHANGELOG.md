@@ -3,6 +3,19 @@
 
 ---
 
+# StatCap 1.2.5 (Retail)
+
+*11 November 2026*
+
+## Stat priorities after 12.1.5
+
+The stat order follows the class guides as they stand after patch 12.1.5 for Unholy Death
+Knight, Devourer Demon Hunter, Preservation Evoker, Subtlety Rogue, Enhancement Shaman and
+Affliction Warlock. Subtlety's Haste target is now about 700 rating in raids and Mythic+ alike,
+and the notes say where a hero talent or Mythic+ changes the order.
+
+---
+
 # StatCap 1.2.4 (Forever)
 
 *11 November 2026*

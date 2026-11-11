@@ -2,7 +2,7 @@
 ## Title: StatCap
 ## Notes: Live stat priority and cap-aware gear compare for retail
 ## Author: Adam
-## Version: 1.2.3
+## Version: 1.2.5
 ## SavedVariables: StatCapDB
 ## OptionalDeps: StatCoach
 ## IconTexture: Interface\AddOns\StatCap\Media\logo
