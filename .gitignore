@@ -13,3 +13,6 @@ Thumbs.db
 .DS_Store
 .vscode/
 .idea/
+
+# Python bytecode (the tests import Tools/gen_forever_data.py)
+__pycache__/

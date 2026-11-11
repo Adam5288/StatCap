@@ -510,14 +510,83 @@ F.talentTree = {
   },
 }
 
--- Stat lists from Forever's own guides, used where Classic has none. Same shape as Era's
--- spec entries; only the fields given here replace Era's.
+-- Forever's own level-60 stat lists, for the trees whose launch guides agree on an order
+-- (read 5 Nov 2026). Same shape as Era's spec entries; only the fields given here replace
+-- Era's. A tree that is not in here keeps Era's list as a stand-in, and the panel says so.
+-- Expertise, Haste, Spell Haste and Spell Piercing are rows no item is counted for yet.
 F.specs = {
+  WARRIOR = {
+    Arms = {
+      stats = { "Hit", "Expertise", "Crit", "Strength", "Agility", "Haste", "Attack Power" },
+      notes = "Hit first, up to the cap on the hit bar, then expertise and crit - the guides differ on which of the two leads - then strength. Agility and haste follow, and the guides differ on which of those two leads as well. Attack power closes the list; one guide ranks it. The guides themselves call this order untested at level 60.",
+      source = "Stat priority: Forever's launch guides, read 5 Nov 2026.",
+    },
+  },
   PALADIN = {
     Protection = {
-      stats = { "Hit", "Stamina", "Strength", "Armor", "Agility", "Crit" },
-      notes = "Weapon damage first while leveling, then hit, then stamina - Icy Veins' Forever tank guide. Strength adds damage, not survival.",
-      source = "Stat priority: Icy Veins' WoW Forever Protection Paladin guide, 17 Sep 2026 (no Classic guide has one).",
+      stats = { "Stamina", "Defense", "Spell Damage", "Hit", "Armor", "Intellect", "Strength" },
+      notes = "Stamina, Defense and spell damage sit at or near the top of every launch guide, though not in the same order. Hit and armor follow where a guide ranks them; intellect and strength close the list, and the guides differ on which of the two is worth more. The guides themselves call this order untested at level 60.",
+      source = "Stat priority: Forever's launch guides, read 5 Nov 2026.",
+    },
+  },
+  HUNTER = {
+    ["Beast Mastery"] = {
+      stats = { "Hit", "Crit", "Agility", "Intellect", "Attack Power" },
+      notes = "Hit first, up to the cap on the hit bar, then crit, then agility: two of the three guides place crit above agility, the third gives crit no place. Intellect ranks above attack power. The guides themselves call this order untested at level 60.",
+      source = "Stat priority: Forever's launch guides, read 5 Nov 2026.",
+    },
+    Marksmanship = {
+      stats = { "Hit", "Crit", "Agility", "Intellect", "Attack Power" },
+      notes = "Hit first, up to the cap on the hit bar, then crit, then agility: two of the three guides place crit above agility, the third gives crit no place. Intellect ranks above attack power. The guides themselves call this order untested at level 60.",
+      source = "Stat priority: Forever's launch guides, read 5 Nov 2026.",
+    },
+    Survival = {
+      stats = { "Hit", "Crit", "Agility", "Attack Power" },
+      notes = "Hit first, up to the cap on the hit bar, then crit, then agility, then attack power: two of the three guides place crit above agility, the third gives crit no place. The guides place strength and intellect differently, so neither is ranked here. The guides themselves call this order untested at level 60.",
+      source = "Stat priority: Forever's launch guides, read 5 Nov 2026.",
+    },
+  },
+  PRIEST = {
+    Shadow = {
+      stats = { "Spell Hit", "Spell Damage", "Spell Crit", "Intellect", "Spirit" },
+      notes = "Spell hit first, up to the cap on the hit bar, then spell damage, then crit - one guide swaps those two - then intellect, then spirit. The guides themselves call this order untested at level 60.",
+      source = "Stat priority: Forever's launch guides, read 5 Nov 2026.",
+    },
+  },
+  SHAMAN = {
+    Restoration = {
+      stats = { "Healing Power", "Spell Crit", "Intellect", "Spirit", "MP5" },
+      notes = "Healing power first, then crit, then intellect, then spirit, then MP5. The guides themselves call this order untested at level 60.",
+      source = "Stat priority: Forever's launch guides, read 5 Nov 2026.",
+    },
+  },
+  MAGE = {
+    Arcane = {
+      stats = { "Spell Hit", "Spell Damage", "Spell Crit", "Spell Haste", "Intellect", "Spirit" },
+      notes = "Spell hit first, up to the cap on the hit bar, then spell damage, then crit. Two of the three guides rank haste above intellect; spirit comes last. The guides themselves call this order untested at level 60.",
+      source = "Stat priority: Forever's launch guides, read 5 Nov 2026.",
+    },
+    Fire = {
+      stats = { "Spell Hit", "Spell Damage", "Spell Crit", "Spell Haste", "Intellect", "Spirit" },
+      notes = "Spell hit first, up to the cap on the hit bar, then spell damage, then crit. Two of the three guides rank haste above intellect; spirit comes last. The guides themselves call this order untested at level 60.",
+      source = "Stat priority: Forever's launch guides, read 5 Nov 2026.",
+    },
+    Frost = {
+      stats = { "Spell Hit", "Spell Damage", "Spell Crit", "Intellect", "Spirit" },
+      notes = "Spell hit first, up to the cap on the hit bar, then spell damage, then crit - one guide swaps those two - then intellect, then spirit. The guides themselves call this order untested at level 60.",
+      source = "Stat priority: Forever's launch guides, read 5 Nov 2026.",
+    },
+  },
+  WARLOCK = {
+    Demonology = {
+      stats = { "Spell Damage", "Spell Hit", "Spell Crit", "Spell Haste", "Spell Piercing", "Intellect", "Spirit" },
+      notes = "Spell damage first, then spell hit, then crit, then haste, then spell piercing, intellect and spirit. One guide puts hit ahead of spell damage until the hit bar is full. The guides themselves call this order untested at level 60.",
+      source = "Stat priority: Forever's launch guides, read 5 Nov 2026.",
+    },
+    Destruction = {
+      stats = { "Spell Damage", "Spell Crit", "Spell Hit", "Spell Haste", "Spell Piercing", "Intellect", "Spirit" },
+      notes = "Spell damage first, then crit, then spell hit, then haste, then spell piercing, intellect and spirit. One guide puts hit first and haste ahead of crit. The guides themselves call this order untested at level 60.",
+      source = "Stat priority: Forever's launch guides, read 5 Nov 2026.",
     },
   },
 }

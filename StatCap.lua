@@ -2874,9 +2874,9 @@ local FOREVER_CRIT_PER_SKILL = 0.04
 -- cannot be asked which tree you play: StatCap reads the points spent in each tree off the
 -- talent window's three tree headings, and adds up the ranks you bought per tree by talent
 -- name (StatCapData_Forever.lua) only on a client without them. The stat list for that tree
--- is Era's (Wowhead
--- Classic) until Forever's own level-60 guides exist, with Forever's own guide where Classic
--- has none. Everything lives on ns: this file sits at Lua's limit of 200 locals per chunk.
+-- is Forever's own where its launch guides agree on a level-60 order (D.forever.specs), and
+-- Era's (Wowhead Classic) as a stand-in for every other tree; the panel says which it is.
+-- Everything lives on ns: this file sits at Lua's limit of 200 locals per chunk.
 do
   local function isSecretValue(v) return issecretvalue ~= nil and issecretvalue(v) and true or false end
   -- The points spent in each of the three trees, the way Forever's own talent window shows them
@@ -3081,6 +3081,15 @@ do
     { "restores (%d+) mana per 5 sec", "MP5" },
     { "increased defense %+(%d+)", "Defense" },
   }
+  -- The stats an item is counted for: the ones the tables above read off it. A row of a
+  -- stat list that is not among them keeps its place in the order, and the notes name it.
+  ns.fvCounted = {}
+  for _, name in pairs(KEYS) do ns.fvCounted[name] = true end
+  for _, p in ipairs(LINES) do ns.fvCounted[p[2]] = true end
+  for _, p in ipairs(FALLBACK) do
+    if p[2] == "both" then ns.fvCounted["Spell Damage"], ns.fvCounted["Healing Power"] = true, true
+    else ns.fvCounted[p[2]] = true end
+  end
 
   -- Everything one item gives: { [stat name] = amount, dps = n }
   ns.ForeverItemStats = function(link)
@@ -3347,9 +3356,11 @@ local function RefreshForever()
   local rangedHaste, ammoHaste = safe(GetRangedHaste)
   typed("Haste", desecret(safe(GetMeleeHaste)), sum(rangedHaste, ammoHaste),
     desecret(safe(UnitSpellHaste, "player")))
+  local expertise   -- the main hand's, kept for the Expertise row of a stat list below
   if not SPELL_ONLY[class] then
     local exp, offExp = safe(GetExpertise)
     exp, offExp = desecret(exp), desecret(offExp)
+    expertise = exp
     local _, offSpeed = safe(UnitAttackSpeed, "player")
     if exp and exp > 0 then
       lines[#lines + 1] = "Expertise  " .. pct(exp) .. ((offSpeed and offExp) and (" / " .. pct(offExp)) or "")
@@ -3371,6 +3382,8 @@ local function RefreshForever()
     end
   end
   local list = (sd and sd.stats) or {}
+  -- Forever's own list for this tree (its source line says so), or Era's standing in for it
+  local ownList = sd ~= nil and type(sd.source) == "string" and sd.source:find("Forever", 1, true) ~= nil
   if #list > 0 then
     -- The tree's stat list, each with your own number next to it
     local function p2(v) v = desecret(v); return v and string.format("%.2f%%", v) or nil end
@@ -3402,20 +3415,30 @@ local function RefreshForever()
       ["Spell Crit"] = function() return p2(lowestSchool(GetSpellCritChance)) end,
       ["Attack Power"] = function()
         local b, p, n = safe(ranged and UnitRangedAttackPower or UnitAttackPower, "player")
+        b = desecret(b)   -- withheld in combat: no number, never a zero
         if b == nil then return nil end
-        return big(num(desecret(b)) + num(desecret(p)) + num(desecret(n)))
+        return big(b + num(desecret(p)) + num(desecret(n)))
       end,
       ["Spell Damage"] = function() return big(lowestSchool(GetSpellBonusDamage)) end,
       ["Healing Power"] = function() return big(safe(GetSpellBonusHealing)) end,
       Armor = function() local _, eff = safe(UnitArmor, "player"); return big(eff) end,
       Dodge = function() return p2(safe(GetDodgeChance)) end,
       Parry = function() return p2(safe(GetParryChance)) end,
-      Defense = function() local b, m = safe(UnitDefense, "player"); return b and big(num(desecret(b)) + num(desecret(m))) end,
+      Defense = function()
+        -- Forever's character sheet reads UnitDefenseSkill; the client has no UnitDefense
+        local b, m = safe(UnitDefenseSkill or UnitDefense, "player")
+        b = desecret(b)
+        return b and big(b + num(desecret(m)))
+      end,
       Haste = function() return p2(safe(ranged and GetRangedHaste or GetMeleeHaste)) end,
+      -- Rows Forever's own lists rank and no item is counted for: your own number all the same.
+      -- Spell Piercing is what Forever's character sheet calls spell penetration.
+      Expertise = function() return p2(expertise) end,
+      ["Spell Haste"] = function() return p2(safe(UnitSpellHaste, "player")) end,
+      ["Spell Piercing"] = function() return big(safe(GetSpellPenetration)) end,
     }
-    local forever = type(sd.source) == "string" and sd.source:find("Forever", 1, true)
     UI.prioHeader:SetText("|cffffd100YOUR STATS, IN ORDER|r  |cff888888(" ..
-      (forever and "Forever guide" or "Classic list for now") .. ")|r")
+      (ownList and "Forever guide" or "Classic list for now") .. ")|r")
     for i = 1, PRIO_MAX do
       local t, st = UI.prio[i], list[i]
       if st then
@@ -3552,12 +3575,27 @@ local function RefreshForever()
   UI.nowLine:SetText("|cffffd100NOW:|r |cffffffff" .. now .. "|r")
   UI.nowLine:Show()
 
+  -- The rows of the shown list that no item is counted for, as a sentence for the notes
+  local uncounted = {}
+  for _, st in ipairs(list) do
+    if not (ns.fvCounted and ns.fvCounted[st]) then uncounted[#uncounted + 1] = st end
+  end
+  if #uncounted > 0 then
+    uncounted = " " .. table.concat(uncounted, ", ", 1, #uncounted - 1) .. (#uncounted > 1 and " and " or "") ..
+      uncounted[#uncounted] .. " on an item " .. (#uncounted > 1 and "are" or "is") ..
+      " not counted in the upgrade line yet."
+  else uncounted = "" end
   local defCap = 440
   local defText = rawget(_G, "DEFAULT_STATDEFENSE_TOOLTIP")
-  if type(defText) == "string" then defCap = tonumber(defText:match("(%d%d%d)")) or defCap end
+  if type(defText) == "string" then
+    -- The tooltip also says "200% damage" and "150% damage": colour codes and percent numbers
+    -- go first, and only a number a Defense skill can be is taken
+    local n = tonumber((defText:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("%d+[%.,]?%d*%%+", "")):match("(%d%d%d)"))
+    if n and n >= 300 and n <= 600 then defCap = n end
+  end
   UI.infoParts = {
-    "StatCap on World of Warcraft: Forever coaches from what the game itself states - nothing here is " ..
-    "carried over from Classic by assumption.",
+    "StatCap on World of Warcraft: Forever coaches from what the game itself states - the caps, weapon " ..
+    "skill and Defense numbers here are the game's own, none carried over from Classic by assumption.",
     string.format("HIT. Forever's own hit tooltip says that to never miss a target of your level you need " ..
       "%s%% melee or ranged hit and %s%% spell hit, and against raid bosses %s%% and %s%%.%s The bar " ..
       "switches to the raid boss number five levels below the level cap.",
@@ -3565,13 +3603,21 @@ local function RefreshForever()
       caps.level.dual and string.format(" While dual wielding it lists %s%% and %s%% instead.",
         fmt(caps.level.dual), fmt(caps.boss.dual)) or ""),
     "WEAPON SKILL. Every point a weapon skill sits below its maximum costs 0.04% crit with that weapon " ..
-    "(measured on the beta), and the game's own text says it lowers your chance to hit as well. The " ..
-    "maximum is five per character level.",
+    "(measured on Forever's beta, before launch), and the game's own text says it lowers your chance to " ..
+    "hit as well. The maximum is five per character level.",
     string.format("DEFENSE. The game's Defense tooltip says %d Defense makes you immune to critical strikes " ..
       "from raid bosses. Crushing blows come from enemies three or more levels above you.", defCap),
-    (#list > 0) and ("STAT LIST. " .. (sd.notes or "") .. " " .. (sd.source or "") .. " Forever's own guides " ..
-      "have no level-60 order yet, so until they do, this list and the upgrade line on item tooltips follow " ..
-      "it - with weapon damage first for melee and hunters, as Forever's guides put it.")
+    -- An own list brings its own note (the order, where the guides differ, that they call it
+    -- untested) and source line. A stand-in prints its source line and says what it is; Era's
+    -- note stays out, because its numbers and talents are Classic's, not Forever's.
+    -- The weapon-damage clause is for the trees that swing or shoot; the last sentence names
+    -- the rows no item is counted for, so the line above it promises nothing it does not do.
+    (#list > 0) and ("STAT LIST. " .. (ownList and ((sd.notes or "") .. " " .. sd.source)
+        or ((sd.source and (sd.source .. " ") or "") .. "Forever's launch guides have no settled order " ..
+          "for this tree yet, so the Classic order stands in for now.")) ..
+      " The list above and the upgrade line on item tooltips follow that order" ..
+      ((sd.attack == "melee" or sd.attack == "ranged") and " - with weapon damage first for melee and " ..
+        "hunters, as Forever's guides put it" or "") .. "." .. uncounted)
       or "STAT LIST. Spend a talent point and StatCap reads your tree from it - or pick one with the " ..
       "buttons above. Upgrade lines on item tooltips follow the list of your tree.",
   }
