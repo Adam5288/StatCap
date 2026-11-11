@@ -13,6 +13,9 @@
      (13 Aug 2026), which is the authoritative source; the one-line "rough guideline"
      on the BiS pages disagreed with it for 6 specs and is not used. Every entry below
      was then read back and diffed against the harvested order - all 39 match.
+     Read again on 11 Nov 2026 (all 40 pages, dated 13-17 Oct 2026, after patch 12.1.5):
+     34 unchanged; Unholy, Devourer, Preservation, Subtlety, Enhancement and Affliction
+     follow the pages' new order, and all 40 arrays were read back against them.
      Where the guide marks stats as equal (written "=" or "Haste/Crit") the note says
      so; the array still has to pick an order, so tied stats are listed in the guide's
      own order and the note is what carries the tie.
@@ -69,7 +72,8 @@ RT.DR_HARDCAP_WIDTHS = 20   -- hard cap = DR + 20 bracket widths (8800 / 9200 / 
 -- Guide rating targets. Only specs whose Wowhead stat page states one; a spec
 -- without an entry has no target - do not invent one. Format: stat -> list of
 -- { rating, "context" }, first entry = the default the bar marks.
--- Sub Rogue: "Haste (~1100 Haste)" single target / "(~700 Haste)" Mythic+.
+-- Sub Rogue: "Haste (~700 Haste)" in single target, multi target and Mythic+ alike
+-- (11 Nov 2026; it was ~1100 in single target before 12.1.5).
 -- Elemental: "Mastery to 1200 rating, then Haste/Crit".
 
 RT.classOrder = { "WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","DEATHKNIGHT",
@@ -130,9 +134,10 @@ RT.classes = {
         stats = { "Haste", "Crit", "Versatility", "Mastery" },
         notes = "Item level first. Haste leads, then Crit; Versatility and Mastery behind. Season 2 guide order. " .. SIM },
       Subtlety = { role="DAMAGER", primary="Agility",
-        stats = { "Mastery", "Haste", "Crit", "Versatility" },
-        targets = { Haste = { { 1100, "raid" }, { 700, "M+" } } },
-        notes = "Item level first. Mastery leads, then Haste; Crit and Versatility behind. Season 2 guide order. " .. SIM },
+        stats = { "Mastery", "Haste", "Versatility", "Crit" },
+        targets = { Haste = { { 700, "raid and M+" } } },
+        notes = "Item level first. Mastery leads, then Haste, then Versatility and Crit. Trickster in single target " ..
+          "puts Crit ahead of Versatility. Season 2 guide order. " .. SIM },
     },
   },
   PRIEST = {
@@ -159,8 +164,8 @@ RT.classes = {
         stats = { "Crit", "Mastery", "Haste", "Versatility" },
         notes = "Item level first. Crit leads, then Mastery; Haste and Versatility behind. Season 2 guide order. " .. SIM },
       Unholy = { role="DAMAGER", primary="Strength",
-        stats = { "Mastery", "Crit", "Haste", "Versatility" },
-        notes = "Item level first. Mastery leads, then Crit; Haste and Versatility behind. Season 2 guide order. " .. SIM },
+        stats = { "Crit", "Mastery", "Haste", "Versatility" },
+        notes = "Item level first. Crit leads, then Mastery; Haste and Versatility behind. Season 2 guide order. " .. SIM },
     },
   },
   SHAMAN = {
@@ -171,8 +176,9 @@ RT.classes = {
         targets = { Mastery = { { 1200, "then Haste/Crit" } } },
         notes = "Item level first. Mastery up to about 1200 rating, then Haste and Crit equal, Versatility last. Season 2 guide order. " .. SIM },
       Enhancement = { role="DAMAGER", primary="Agility",
-        stats = { "Mastery", "Haste", "Crit", "Versatility" },
-        notes = "Item level first. Mastery and Haste are equal on top, then Crit, then Versatility. Season 2 guide order. " .. SIM },
+        stats = { "Crit", "Mastery", "Haste", "Versatility" },
+        notes = "Item level first. Stormbringer: Crit and Mastery are equal on top, then Haste, then Versatility. " ..
+          "Totemic: Mastery and Haste are equal on top, then Crit, then Versatility. Season 2 guide order. " .. SIM },
       Restoration = { role="HEALER", primary="Intellect",
         stats = { "Crit", "Haste", "Versatility", "Mastery" },
         notes = "Item level first. Crit leads, then Haste; Versatility and Mastery behind. Season 2 guide order. " .. SIM },
@@ -196,8 +202,8 @@ RT.classes = {
     specOrder = { "Affliction", "Demonology", "Destruction" },
     specs = {
       Affliction = { role="DAMAGER", primary="Intellect",
-        stats = { "Haste", "Crit", "Versatility", "Mastery" },
-        notes = "Item level first. Haste leads, then Crit; Versatility and Mastery behind. Season 2 guide order. " .. SIM },
+        stats = { "Haste", "Crit", "Mastery", "Versatility" },
+        notes = "Item level first. Haste leads, then Crit; Mastery and Versatility behind. Season 2 guide order. " .. SIM },
       Demonology = { role="DAMAGER", primary="Intellect",
         stats = { "Haste", "Crit", "Mastery", "Versatility" },
         notes = "Item level first. Haste and Crit are equal on top, then Mastery, then Versatility. Season 2 guide order. " .. SIM },
@@ -249,11 +255,9 @@ RT.classes = {
       -- Midnight's third Demon Hunter spec: ranged, and the only one that scales
       -- with Intellect rather than Agility.
       Devourer = { role="DAMAGER", primary="Intellect",
-        stats = { "Haste", "Mastery", "Crit", "Versatility" },
-        targets = { Haste = { { 800, "then Crit/Mastery" } } },
-        notes = "Item level first. Haste leads, then Mastery; Crit and Versatility behind. " ..
-          "The guide's second build wants Haste only up to about 800 rating (18-20%) and " ..
-          "puts Crit and Mastery ahead of any Haste past that. Season 2 guide order. " .. SIM },
+        stats = { "Mastery", "Haste", "Crit", "Versatility" },
+        notes = "Item level first. Mastery leads, then Haste; Crit and Versatility behind. " ..
+          "Both hero talents share this order. Season 2 guide order. " .. SIM },
     },
   },
   EVOKER = {
@@ -263,8 +267,9 @@ RT.classes = {
         stats = { "Crit", "Mastery", "Haste", "Versatility" },
         notes = "Item level first. Crit leads, then Mastery; Haste and Versatility behind. Season 2 guide order. " .. SIM },
       Preservation = { role="HEALER", primary="Intellect",
-        stats = { "Mastery", "Crit", "Haste", "Versatility" },
-        notes = "Item level first. Mastery leads, then Crit; Haste and Versatility behind. Season 2 guide order. " .. SIM },
+        stats = { "Crit", "Mastery", "Haste", "Versatility" },
+        notes = "Item level first. Crit leads, then Mastery, then Haste; in Mythic+ Haste comes ahead of Mastery. " ..
+          "Versatility last. Season 2 guide order. " .. SIM },
       Augmentation = { role="DAMAGER", primary="Intellect",
         stats = { "Mastery", "Crit", "Haste", "Versatility" },
         notes = "Item level first. Mastery leads, then Crit; Haste and Versatility behind. Season 2 guide order. " .. SIM },
