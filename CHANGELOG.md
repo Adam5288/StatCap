@@ -3,6 +3,29 @@
 
 ---
 
+# StatCap 1.2.4 (Forever)
+
+*11 November 2026*
+
+## Forever's own stat order
+
+The stat list now follows Forever's own level-60 launch guides for Arms Warrior, Protection
+Paladin, Beast Mastery, Marksmanship and Survival Hunter, Shadow Priest, Restoration Shaman,
+Frost, Fire and Arcane Mage, and Demonology and Destruction Warlock, marked "Forever guide".
+Upgrade lines on items and in your bags follow the new order.
+
+## The order in a sentence
+
+The notes behind the info button give that order in a sentence and say where the guides differ.
+Every other tree keeps the Classic order for now, and its list says so.
+
+## Expertise, spell haste and spell piercing in your list
+
+Expertise, spell haste and spell piercing are rows in the lists that rank them, each with your
+own number next to it.
+
+---
+
 # StatCap 1.2.3
 
 *8 November 2026*
